@@ -90,8 +90,6 @@ MBot.adapter = (() => {
             if (IFACE === 'ni' && window.API?.addCallbackToEvent) {
                 window.API.addCallbackToEvent('close_battle', () => setTimeout(fn, 250));
             }
-        },
-
-        canFarm: () => IFACE === 'si'
+        }
     };
 })();

@@ -1,20 +1,31 @@
 MBot.search = (() => {
-    function tick() {
+    function buildConditionNI() {
         const { targetHeroes, targetElites } = MBot.bot;
-        MBot.combat.attackNearest(tip => {
+        return d => {
+            if (!d.name) return false;
+            const lt = d.name.toLowerCase();
+            return targetHeroes.some(h => lt.includes(h)) ||
+                   targetElites.some(e => lt.includes(e));
+        };
+    }
+
+    function buildConditionSI() {
+        const { targetHeroes, targetElites } = MBot.bot;
+        return tip => {
             const lt = tip.toLowerCase();
             return targetHeroes.some(h => lt.includes(h)) ||
                    targetElites.some(e => lt.includes(e));
-        });
+        };
+    }
+
+    function tick() {
+        const conditionFn = MBot.adapter.isNI ? buildConditionNI() : buildConditionSI();
+        MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
     }
 
     return {
         start() {
-            if (!MBot.adapter.canFarm()) {
-                alert('[Margonem Bot] Farm/Search działa tylko w Starym Interfejsie (SI).\nNowy Interfejs używa canvas — API ataku na moby nie jest dostępne.');
-                return;
-            }
             MBot.bot.targetHeroes = document.getElementById('heroes-input').value
                 .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
             MBot.bot.targetElites = document.getElementById('elites-input').value
