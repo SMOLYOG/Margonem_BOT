@@ -8,7 +8,10 @@ MBot.storage = (() => {
         mobName: "",
         heroesInput: "",
         elitesInput: "",
-        healItemId: null
+        healItemId: null,
+        botMode: null,
+        gatewayEnabled: false,
+        gatewayDest: ""
     };
 
     function load() {

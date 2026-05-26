@@ -77,7 +77,9 @@ MBot.farm = (() => {
             MBot.storage.setMany({
                 mobMinLevel: minLevel ?? '',
                 mobMaxLevel: maxLevel ?? '',
-                mobName
+                mobName,
+                gatewayEnabled: document.getElementById('gateway-enabled')?.checked ?? false,
+                gatewayDest: document.getElementById('gateway-dest')?.value ?? ''
             });
             MBot.bot.start('farm', tick);
         }

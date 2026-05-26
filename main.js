@@ -40,6 +40,16 @@
 
     document.getElementById('heal-threshold').value = MBot.bot.healThreshold;
 
+    const heroesInput = MBot.storage.get('heroesInput');
+    const elitesInput = MBot.storage.get('elitesInput');
+    if (heroesInput) document.getElementById('heroes-input').value = heroesInput;
+    if (elitesInput) document.getElementById('elites-input').value = elitesInput;
+
+    const gwEnabled = MBot.storage.get('gatewayEnabled');
+    const gwDest    = MBot.storage.get('gatewayDest');
+    if (gwEnabled) document.getElementById('gateway-enabled').checked = true;
+    if (gwDest)    document.getElementById('gateway-dest').value = gwDest;
+
     // W NI: rejestruj callback na koniec walki (auto-heal po battle)
     MBot.adapter.onBattleClose(() => MBot.heal.autoHeal());
 
@@ -62,5 +72,13 @@
         notice.style.display = 'block';
         setTimeout(() => { notice.style.display = 'none'; }, 2000);
     });
+
+    // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
+    const savedMode = MBot.storage.get('botMode');
+    if (savedMode === 'farm') {
+        setTimeout(() => MBot.farm.start(), 2000);
+    } else if (savedMode === 'search') {
+        setTimeout(() => MBot.search.start(), 2000);
+    }
 
 })();

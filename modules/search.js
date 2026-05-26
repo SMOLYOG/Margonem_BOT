@@ -26,10 +26,11 @@ MBot.search = (() => {
 
     return {
         start() {
-            MBot.bot.targetHeroes = document.getElementById('heroes-input').value
-                .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-            MBot.bot.targetElites = document.getElementById('elites-input').value
-                .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            const heroesVal = document.getElementById('heroes-input').value;
+            const elitesVal = document.getElementById('elites-input').value;
+            MBot.storage.setMany({ heroesInput: heroesVal, elitesInput: elitesVal });
+            MBot.bot.targetHeroes = heroesVal.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            MBot.bot.targetElites = elitesVal.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
             MBot.bot.start('search', tick);
         }
     };

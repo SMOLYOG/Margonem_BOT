@@ -18,7 +18,7 @@
 
     MBot.storage = (() => {
         const KEY = MBot.config.STORAGE_KEY;
-        const DEFAULTS = { healThreshold: 30, mobMinLevel: "", mobMaxLevel: "", mobName: "", healItemId: null };
+        const DEFAULTS = { healThreshold: 30, mobMinLevel: "", mobMaxLevel: "", mobName: "", heroesInput: "", elitesInput: "", healItemId: null, botMode: null, gatewayEnabled: false, gatewayDest: "" };
         function load() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } }
         return {
             get(key) { const s = load(); return key in s ? s[key] : (DEFAULTS[key] ?? null); },
@@ -85,8 +85,8 @@
         healItemId: MBot.storage.get("healItemId"),
         healThreshold: MBot.storage.get("healThreshold") ?? 30,
         targetHeroes:[], targetElites:[], lastHealTime:0, inBattle:false, noMobsTicks:0, transitioning:false,
-        start(mode,fn){ this.stop(); this.mode=mode; this.intervalId=setInterval(fn,MBot.config.TICK_MS); MBot.ui.setStatus(mode); },
-        stop(){ clearInterval(this.intervalId); this.intervalId=null; this.mode=null; this.inBattle=false; this.noMobsTicks=0; this.transitioning=false; MBot.ui.setStatus("off"); MBot.ui.updateHP(null); }
+        start(mode,fn){ this.stop(); this.mode=mode; this.intervalId=setInterval(fn,MBot.config.TICK_MS); MBot.storage.set('botMode',mode); MBot.ui.setStatus(mode); },
+        stop(){ clearInterval(this.intervalId); this.intervalId=null; this.mode=null; this.inBattle=false; this.noMobsTicks=0; this.transitioning=false; MBot.storage.set('botMode',null); MBot.ui.setStatus("off"); MBot.ui.updateHP(null); }
     };
 
     MBot.ui = (() => {
@@ -285,14 +285,14 @@
                 else{MBot.bot.noMobsTicks++;if(MBot.bot.noMobsTicks>=NO_MOBS_THRESHOLD){MBot.bot.noMobsTicks=0;tryGateway();}}
             }
         }
-        return{start(){const{minLevel,maxLevel,mobName}=getF();MBot.storage.setMany({mobMinLevel:minLevel??'',mobMaxLevel:maxLevel??'',mobName});MBot.bot.start('farm',tick);}};
+        return{start(){const{minLevel,maxLevel,mobName}=getF();MBot.storage.setMany({mobMinLevel:minLevel??'',mobMaxLevel:maxLevel??'',mobName,gatewayEnabled:document.getElementById('gateway-enabled')?.checked??false,gatewayDest:document.getElementById('gateway-dest')?.value??''});MBot.bot.start('farm',tick);}};
     })();
 
     MBot.search = (() => {
         function condNI(){const{targetHeroes,targetElites}=MBot.bot;return d=>{if(!d.name)return false;const l=d.name.toLowerCase();return targetHeroes.some(h=>l.includes(h))||targetElites.some(e=>l.includes(e));};}
         function condSI(){const{targetHeroes,targetElites}=MBot.bot;return tip=>{const l=tip.toLowerCase();return targetHeroes.some(h=>l.includes(h))||targetElites.some(e=>l.includes(e));};}
         function tick(){MBot.combat.attackNearest(MBot.adapter.isNI?condNI():condSI());MBot.heal.autoHeal();}
-        return{start(){MBot.bot.targetHeroes=document.getElementById('heroes-input').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);MBot.bot.targetElites=document.getElementById('elites-input').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);MBot.bot.start('search',tick);}};
+        return{start(){const hv=document.getElementById('heroes-input').value,ev=document.getElementById('elites-input').value;MBot.storage.setMany({heroesInput:hv,elitesInput:ev});MBot.bot.targetHeroes=hv.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);MBot.bot.targetElites=ev.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);MBot.bot.start('search',tick);}};
     })();
 
     // ── init ──────────────────────────────────────────────────────────────
@@ -329,6 +329,14 @@
     if(mobName) document.getElementById('mob-name').value=mobName;
     document.getElementById('heal-threshold').value=MBot.bot.healThreshold;
 
+    const heroesInput=MBot.storage.get('heroesInput'),elitesInput=MBot.storage.get('elitesInput');
+    if(heroesInput) document.getElementById('heroes-input').value=heroesInput;
+    if(elitesInput) document.getElementById('elites-input').value=elitesInput;
+
+    const gwEnabled=MBot.storage.get('gatewayEnabled'),gwDest=MBot.storage.get('gatewayDest');
+    if(gwEnabled) document.getElementById('gateway-enabled').checked=true;
+    if(gwDest) document.getElementById('gateway-dest').value=gwDest;
+
     MBot.adapter.onBattleClose(()=>MBot.heal.autoHeal());
 
     document.getElementById('start-farm')        .addEventListener('click',()=>MBot.farm.start());
@@ -342,6 +350,11 @@
         const n=document.getElementById('heal-save-notice'); n.style.display='block';
         setTimeout(()=>{n.style.display='none';},2000);
     });
+
+    // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
+    const savedMode=MBot.storage.get('botMode');
+    if(savedMode==='farm') setTimeout(()=>MBot.farm.start(),2000);
+    else if(savedMode==='search') setTimeout(()=>MBot.search.start(),2000);
 
     console.log('[BOT] Margonem Bot v8.4 uruchomiony —', MBot.adapter.IFACE.toUpperCase());
 })();

@@ -15,6 +15,7 @@ MBot.bot = {
         this.stop();
         this.mode = mode;
         this.intervalId = setInterval(fn, MBot.config.TICK_MS);
+        MBot.storage.set('botMode', mode);
         MBot.ui.setStatus(mode);
     },
 
@@ -25,6 +26,7 @@ MBot.bot = {
         this.inBattle = false;
         this.noMobsTicks = 0;
         this.transitioning = false;
+        MBot.storage.set('botMode', null);
         MBot.ui.setStatus("off");
         MBot.ui.updateHP(null);
     }

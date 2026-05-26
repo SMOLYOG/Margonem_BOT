@@ -38,7 +38,10 @@
             mobName: "",
             heroesInput: "",
             elitesInput: "",
-            healItemId: null
+            healItemId: null,
+            botMode: null,
+            gatewayEnabled: false,
+            gatewayDest: ""
         };
         function load() {
             try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
@@ -174,6 +177,7 @@
             this.stop();
             this.mode = mode;
             this.intervalId = setInterval(fn, MBot.config.TICK_MS);
+            MBot.storage.set('botMode', mode);
             MBot.ui.setStatus(mode);
         },
 
@@ -184,6 +188,7 @@
             this.inBattle = false;
             this.noMobsTicks = 0;
             this.transitioning = false;
+            MBot.storage.set('botMode', null);
             MBot.ui.setStatus("off");
             MBot.ui.updateHP(null);
         }
@@ -707,7 +712,13 @@
         return {
             start() {
                 const { minLevel, maxLevel, mobName } = getFilters();
-                MBot.storage.setMany({ mobMinLevel: minLevel ?? '', mobMaxLevel: maxLevel ?? '', mobName });
+                MBot.storage.setMany({
+                    mobMinLevel: minLevel ?? '',
+                    mobMaxLevel: maxLevel ?? '',
+                    mobName,
+                    gatewayEnabled: document.getElementById('gateway-enabled')?.checked ?? false,
+                    gatewayDest: document.getElementById('gateway-dest')?.value ?? ''
+                });
                 MBot.bot.start('farm', tick);
             }
         };
@@ -742,10 +753,11 @@
 
         return {
             start() {
-                MBot.bot.targetHeroes = document.getElementById('heroes-input').value
-                    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-                MBot.bot.targetElites = document.getElementById('elites-input').value
-                    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                const heroesVal = document.getElementById('heroes-input').value;
+                const elitesVal = document.getElementById('elites-input').value;
+                MBot.storage.setMany({ heroesInput: heroesVal, elitesInput: elitesVal });
+                MBot.bot.targetHeroes = heroesVal.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                MBot.bot.targetElites = elitesVal.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
                 MBot.bot.start('search', tick);
             }
         };
@@ -784,6 +796,7 @@
         document.getElementById('mbot-footer').appendChild(switchBtn);
     }
 
+    // Przywróć zapisane ustawienia
     const mobMin  = MBot.storage.get('mobMinLevel');
     const mobMax  = MBot.storage.get('mobMaxLevel');
     const mobName = MBot.storage.get('mobName');
@@ -791,6 +804,16 @@
     if (mobMax)  document.getElementById('mob-max-level').value = mobMax;
     if (mobName) document.getElementById('mob-name').value = mobName;
     document.getElementById('heal-threshold').value = MBot.bot.healThreshold;
+
+    const heroesInput = MBot.storage.get('heroesInput');
+    const elitesInput = MBot.storage.get('elitesInput');
+    if (heroesInput) document.getElementById('heroes-input').value = heroesInput;
+    if (elitesInput) document.getElementById('elites-input').value = elitesInput;
+
+    const gwEnabled = MBot.storage.get('gatewayEnabled');
+    const gwDest    = MBot.storage.get('gatewayDest');
+    if (gwEnabled) document.getElementById('gateway-enabled').checked = true;
+    if (gwDest)    document.getElementById('gateway-dest').value = gwDest;
 
     MBot.adapter.onBattleClose(() => MBot.heal.autoHeal());
 
@@ -807,5 +830,13 @@
         notice.style.display = 'block';
         setTimeout(() => { notice.style.display = 'none'; }, 2000);
     });
+
+    // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
+    const savedMode = MBot.storage.get('botMode');
+    if (savedMode === 'farm') {
+        setTimeout(() => MBot.farm.start(), 2000);
+    } else if (savedMode === 'search') {
+        setTimeout(() => MBot.search.start(), 2000);
+    }
 
 })();
