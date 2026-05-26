@@ -276,7 +276,31 @@
 
     // ── init ──────────────────────────────────────────────────────────────
     MBot.ui.build();
-    if (MBot.adapter.isNI) document.getElementById('mbot-header-title').textContent = '⚔️ Margonem Bot [NI]';
+    if (MBot.adapter.isNI) {
+        document.getElementById('mbot-header-title').textContent = '⚔️ Margonem Bot [NI]';
+        ['start-farm', 'start-search'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = true;
+            btn.style.opacity = '0.35';
+            btn.title = 'Niedostępne w Nowym Interfejsie';
+        });
+        ['mbot-panel-farm', 'mbot-panel-search'].forEach(id => {
+            const note = document.createElement('div');
+            note.style.cssText = 'color:#f88;font-size:11px;margin-top:8px;padding:6px 8px;background:#2a1a1a;border:1px solid #7a3a3a;border-radius:5px;line-height:1.4;';
+            note.textContent = '⚠️ Farm i Search działają tylko w Starym Interfejsie. Nowy Interfejs renderuje mapę na canvas — brak dostępu do DOM mobów.';
+            document.getElementById(id).appendChild(note);
+        });
+
+        const switchBtn = document.createElement('button');
+        switchBtn.textContent = '⇄ Przełącz na Stary UI';
+        switchBtn.style.cssText = 'width:100%;margin-top:4px;background:#1a2a3a;border:1px solid #3a5a7a;color:#8af;border-radius:5px;padding:5px;cursor:pointer;font-size:11px;';
+        switchBtn.addEventListener('click', () => {
+            if (typeof window._g === 'function') {
+                window._g('changeInterface&interface=old');
+            }
+        });
+        document.getElementById('mbot-footer').appendChild(switchBtn);
+    }
 
     const mobMin=MBot.storage.get('mobMinLevel'),mobMax=MBot.storage.get('mobMaxLevel'),mobName=MBot.storage.get('mobName');
     if(mobMin) document.getElementById('mob-min-level').value=mobMin;
