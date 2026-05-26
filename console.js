@@ -296,7 +296,7 @@
         switchBtn.style.cssText = 'width:100%;margin-top:4px;background:#1a2a3a;border:1px solid #3a5a7a;color:#8af;border-radius:5px;padding:5px;cursor:pointer;font-size:11px;';
         switchBtn.addEventListener('click', () => {
             if (typeof window._g === 'function') {
-                window._g('changeInterface&interface=old');
+                window._g('changeInterface&type=old');
             }
         });
         document.getElementById('mbot-footer').appendChild(switchBtn);

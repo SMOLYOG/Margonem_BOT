@@ -735,7 +735,7 @@
         switchBtn.title = 'Przełącza grę na Stary Interfejs (SI)';
         switchBtn.addEventListener('click', () => {
             if (typeof window._g === 'function') {
-                window._g('changeInterface&interface=old');
+                window._g('changeInterface&type=old');
             }
         });
         document.getElementById('mbot-footer').appendChild(switchBtn);
