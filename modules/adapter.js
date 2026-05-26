@@ -88,7 +88,12 @@ MBot.adapter = (() => {
 
         onBattleClose(fn) {
             if (IFACE === 'ni' && window.API?.addCallbackToEvent) {
-                window.API.addCallbackToEvent('close_battle', () => setTimeout(fn, 250));
+                window.API.addCallbackToEvent('close_battle', () => {
+                    setTimeout(() => {
+                        MBot.bot.inBattle = false;
+                        fn();
+                    }, 250);
+                });
             }
         }
     };

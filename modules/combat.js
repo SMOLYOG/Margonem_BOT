@@ -55,6 +55,8 @@ MBot.combat = (() => {
 
     function attackNearestNI(conditionFn) {
         if (!window.Engine) return;
+        if (MBot.bot.inBattle) return;
+
         try {
             const hero = Engine.hero.autoPath.getCharacterPosition();
 
@@ -72,7 +74,8 @@ MBot.combat = (() => {
             });
 
             if (nearest) {
-                nearest.onclick(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                MBot.bot.inBattle = true;
+                window._g(`fight&a=attack&id=${nearest.d.id}`);
             }
         } catch (err) {
             console.warn('[BOT NI] attackNearest error:', err);
