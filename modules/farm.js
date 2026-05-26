@@ -1,4 +1,6 @@
 MBot.farm = (() => {
+    const NO_MOBS_THRESHOLD = 10; // 10 * 400ms = 4s bez moba → próba bramy
+
     function getFilters() {
         return {
             minLevel: parseInt(document.getElementById('mob-min-level').value) || null,
@@ -7,7 +9,6 @@ MBot.farm = (() => {
         };
     }
 
-    // conditionFn dla NI: dostaje obiekt d (dane NPC z Engine)
     function buildConditionNI(minLevel, maxLevel, mobName) {
         return d => {
             if (!d.name) return false;
@@ -18,7 +19,6 @@ MBot.farm = (() => {
         };
     }
 
-    // conditionFn dla SI: dostaje string HTML z atrybutu tip
     function buildConditionSI(minLevel, maxLevel, mobName) {
         return tip => {
             if (/Teleport|Grota|Wejście/.test(tip)) return false;
@@ -35,13 +35,40 @@ MBot.farm = (() => {
         };
     }
 
+    function tryGateway() {
+        if (!document.getElementById('gateway-enabled')?.checked) return;
+        const filter = (document.getElementById('gateway-dest')?.value || '').toLowerCase().trim();
+        const gateways = [...document.querySelectorAll('.gw')];
+        const target = filter
+            ? gateways.find(gw => (gw.getAttribute('tip') || '').toLowerCase().includes(filter))
+            : gateways[0];
+        if (!target) return;
+        console.log('[BOT] Mapa czysta — przechodzę przez bramę:', target.getAttribute('tip'));
+        MBot.bot.transitioning = true;
+        target.click();
+        setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+    }
+
     function tick() {
+        if (MBot.bot.transitioning) return;
         const { minLevel, maxLevel, mobName } = getFilters();
         const conditionFn = MBot.adapter.isNI
             ? buildConditionNI(minLevel, maxLevel, mobName)
             : buildConditionSI(minLevel, maxLevel, mobName);
-        MBot.combat.attackNearest(conditionFn);
+        const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
+
+        if (!MBot.adapter.isNI) {
+            if (attacked) {
+                MBot.bot.noMobsTicks = 0;
+            } else {
+                MBot.bot.noMobsTicks++;
+                if (MBot.bot.noMobsTicks >= NO_MOBS_THRESHOLD) {
+                    MBot.bot.noMobsTicks = 0;
+                    tryGateway();
+                }
+            }
+        }
     }
 
     return {

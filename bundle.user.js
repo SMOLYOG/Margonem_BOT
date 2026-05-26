@@ -167,6 +167,8 @@
         targetElites: [],
         lastHealTime: 0,
         inBattle: false,
+        noMobsTicks: 0,
+        transitioning: false,
 
         start(mode, fn) {
             this.stop();
@@ -180,6 +182,8 @@
             this.intervalId = null;
             this.mode = null;
             this.inBattle = false;
+            this.noMobsTicks = 0;
+            this.transitioning = false;
             MBot.ui.setStatus("off");
             MBot.ui.updateHP(null);
         }
@@ -310,6 +314,15 @@
                         <div class="mbot-btn-row">
                             <button class="mbot-btn-start" id="start-farm">▶ Start</button>
                             <button class="mbot-btn-stop" id="stop-farm">■ Stop</button>
+                        </div>
+                        <div class="mbot-sep"></div>
+                        <div class="mbot-row" style="gap:8px;">
+                            <input type="checkbox" id="gateway-enabled" style="margin:0;width:auto;flex:0;cursor:pointer;">
+                            <label for="gateway-enabled" style="white-space:normal;line-height:1.3;cursor:pointer;color:#aaa;">Auto-brama gdy mapa czysta</label>
+                        </div>
+                        <div class="mbot-row">
+                            <label>Mapa docelowa</label>
+                            <input type="text" id="gateway-dest" placeholder="dowolna..." title="Część nazwy mapy docelowej z tip bramy">
                         </div>
                     </div>
                     <div id="mbot-panel-search" class="mbot-panel">
@@ -550,8 +563,9 @@
                 const d  = Math.hypot(dx, dy);
                 if (d < minDist) { minDist = d; nearest = mob; }
             });
-            if (nearest) clickElement(nearest);
+            if (nearest) { clickElement(nearest); handleBattleUISI(); return true; }
             handleBattleUISI();
+            return false;
         }
 
         const MONSTER_TYPES = new Set([2, 3, 9]);
@@ -583,8 +597,8 @@
 
         return {
             attackNearest(conditionFn) {
-                if (MBot.adapter.isNI) attackNearestNI(conditionFn);
-                else attackNearestSI(conditionFn);
+                if (MBot.adapter.isNI) { attackNearestNI(conditionFn); return false; }
+                return attackNearestSI(conditionFn);
             }
         };
     })();
@@ -618,6 +632,8 @@
 
     // ── farm ──────────────────────────────────────────────────────────────
     MBot.farm = (() => {
+        const NO_MOBS_THRESHOLD = 10; // 10 * 400ms = 4s bez moba → próba bramy
+
         function getFilters() {
             return {
                 minLevel: parseInt(document.getElementById('mob-min-level').value) || null,
@@ -652,13 +668,40 @@
             };
         }
 
+        function tryGateway() {
+            if (!document.getElementById('gateway-enabled')?.checked) return;
+            const filter = (document.getElementById('gateway-dest')?.value || '').toLowerCase().trim();
+            const gateways = [...document.querySelectorAll('.gw')];
+            const target = filter
+                ? gateways.find(gw => (gw.getAttribute('tip') || '').toLowerCase().includes(filter))
+                : gateways[0];
+            if (!target) return;
+            console.log('[BOT] Mapa czysta — przechodzę przez bramę:', target.getAttribute('tip'));
+            MBot.bot.transitioning = true;
+            target.click();
+            setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+        }
+
         function tick() {
+            if (MBot.bot.transitioning) return;
             const { minLevel, maxLevel, mobName } = getFilters();
             const conditionFn = MBot.adapter.isNI
                 ? buildConditionNI(minLevel, maxLevel, mobName)
                 : buildConditionSI(minLevel, maxLevel, mobName);
-            MBot.combat.attackNearest(conditionFn);
+            const attacked = MBot.combat.attackNearest(conditionFn);
             MBot.heal.autoHeal();
+
+            if (!MBot.adapter.isNI) {
+                if (attacked) {
+                    MBot.bot.noMobsTicks = 0;
+                } else {
+                    MBot.bot.noMobsTicks++;
+                    if (MBot.bot.noMobsTicks >= NO_MOBS_THRESHOLD) {
+                        MBot.bot.noMobsTicks = 0;
+                        tryGateway();
+                    }
+                }
+            }
         }
 
         return {

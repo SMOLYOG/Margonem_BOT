@@ -216,6 +216,15 @@ MBot.ui = (() => {
                         <button class="mbot-btn-start" id="start-farm">▶ Start</button>
                         <button class="mbot-btn-stop"  id="stop-farm">■ Stop</button>
                     </div>
+                    <div class="mbot-sep"></div>
+                    <div class="mbot-row" style="gap:8px;">
+                        <input type="checkbox" id="gateway-enabled" style="margin:0;width:auto;flex:0;cursor:pointer;">
+                        <label for="gateway-enabled" style="white-space:normal;line-height:1.3;cursor:pointer;color:#aaa;">Auto-brama gdy mapa czysta</label>
+                    </div>
+                    <div class="mbot-row">
+                        <label>Mapa docelowa</label>
+                        <input type="text" id="gateway-dest" placeholder="dowolna..." title="Część nazwy mapy docelowej z tip bramy">
+                    </div>
                 </div>
 
                 <div id="mbot-panel-search" class="mbot-panel">

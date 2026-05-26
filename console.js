@@ -84,9 +84,9 @@
         mode:null, intervalId:null, healSlotEl:null,
         healItemId: MBot.storage.get("healItemId"),
         healThreshold: MBot.storage.get("healThreshold") ?? 30,
-        targetHeroes:[], targetElites:[], lastHealTime:0, inBattle:false,
+        targetHeroes:[], targetElites:[], lastHealTime:0, inBattle:false, noMobsTicks:0, transitioning:false,
         start(mode,fn){ this.stop(); this.mode=mode; this.intervalId=setInterval(fn,MBot.config.TICK_MS); MBot.ui.setStatus(mode); },
-        stop(){ clearInterval(this.intervalId); this.intervalId=null; this.mode=null; this.inBattle=false; MBot.ui.setStatus("off"); MBot.ui.updateHP(null); }
+        stop(){ clearInterval(this.intervalId); this.intervalId=null; this.mode=null; this.inBattle=false; this.noMobsTicks=0; this.transitioning=false; MBot.ui.setStatus("off"); MBot.ui.updateHP(null); }
     };
 
     MBot.ui = (() => {
@@ -126,7 +126,7 @@
             #inv-grid .slot .amount{position:absolute;bottom:1px;right:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000;pointer-events:none}
             #heal-save-notice{font-size:10px;color:#4caf50;margin-top:4px;display:none}
         `;
-        const HTML = `<div id="mbot-root"><div id="mbot-header"><span id="mbot-header-title">⚔️ Margonem Bot</span><div id="mbot-header-controls"><span id="mbot-status-dot">● OFF</span><button id="mbot-minimize">─</button></div></div><div id="mbot-body"><div id="mbot-tabs"><button class="mbot-tab active" data-tab="farm">🤺 Farm</button><button class="mbot-tab" data-tab="search">🧿 Search</button><button class="mbot-tab" data-tab="heal">💊 Heal</button></div><div id="mbot-panel-farm" class="mbot-panel active"><div class="mbot-row"><label>Min lvl</label><input type="number" id="mob-min-level" placeholder="—"></div><div class="mbot-row"><label>Max lvl</label><input type="number" id="mob-max-level" placeholder="—"></div><div class="mbot-row"><label>Nazwa</label><input type="text" id="mob-name" placeholder="dowolna..."></div><div class="mbot-btn-row"><button class="mbot-btn-start" id="start-farm">▶ Start</button><button class="mbot-btn-stop" id="stop-farm">■ Stop</button></div></div><div id="mbot-panel-search" class="mbot-panel"><label class="mbot-label">Heroes (po przecinku):</label><input type="text" id="heroes-input" placeholder="np. Smok, Lich..."><label class="mbot-label" style="margin-top:8px;">Elites (po przecinku):</label><input type="text" id="elites-input" placeholder="np. Wilk Elite..."><div class="mbot-btn-row"><button class="mbot-btn-start" id="start-search">▶ Start</button><button class="mbot-btn-stop" id="stop-search">■ Stop</button></div></div><div id="mbot-panel-heal" class="mbot-panel"><div id="heal-selected"><img id="heal-item-img" src="" style="width:22px;height:22px;object-fit:contain;display:none;"><span id="heal-item-label" style="font-size:11px;color:#888;">Nie wybrano — kliknij slot</span></div><div class="mbot-row" style="justify-content:space-between;margin-bottom:4px;"><span style="color:#aaa;font-size:11px;">Ekwipunek:</span><button id="refresh-inv" class="mbot-btn-save" style="flex:0;padding:2px 10px;">🔄 Odśwież</button></div><div id="inv-grid"></div><div class="mbot-sep"></div><div class="mbot-row"><label>Lecz gdy HP ≤</label><input type="number" id="heal-threshold" min="1" max="99" style="flex:0;width:50px;"><span style="color:#888;">%</span></div><div class="mbot-btn-row"><button class="mbot-btn-save" id="save-heal-settings">💾 Zapisz ustawienia</button></div><div id="heal-save-notice">✓ Ustawienia zapisane</div></div><div id="mbot-footer"><span id="mbot-mode-label">● OFF</span><span id="mbot-hp-label">HP: —</span></div></div></div>`;
+        const HTML = `<div id="mbot-root"><div id="mbot-header"><span id="mbot-header-title">⚔️ Margonem Bot</span><div id="mbot-header-controls"><span id="mbot-status-dot">● OFF</span><button id="mbot-minimize">─</button></div></div><div id="mbot-body"><div id="mbot-tabs"><button class="mbot-tab active" data-tab="farm">🤺 Farm</button><button class="mbot-tab" data-tab="search">🧿 Search</button><button class="mbot-tab" data-tab="heal">💊 Heal</button></div><div id="mbot-panel-farm" class="mbot-panel active"><div class="mbot-row"><label>Min lvl</label><input type="number" id="mob-min-level" placeholder="—"></div><div class="mbot-row"><label>Max lvl</label><input type="number" id="mob-max-level" placeholder="—"></div><div class="mbot-row"><label>Nazwa</label><input type="text" id="mob-name" placeholder="dowolna..."></div><div class="mbot-btn-row"><button class="mbot-btn-start" id="start-farm">▶ Start</button><button class="mbot-btn-stop" id="stop-farm">■ Stop</button></div><div class="mbot-sep"></div><div class="mbot-row" style="gap:8px;"><input type="checkbox" id="gateway-enabled" style="margin:0;width:auto;flex:0;cursor:pointer;"><label for="gateway-enabled" style="white-space:normal;line-height:1.3;cursor:pointer;color:#aaa;">Auto-brama gdy mapa czysta</label></div><div class="mbot-row"><label>Mapa docelowa</label><input type="text" id="gateway-dest" placeholder="dowolna..."></div></div><div id="mbot-panel-search" class="mbot-panel"><label class="mbot-label">Heroes (po przecinku):</label><input type="text" id="heroes-input" placeholder="np. Smok, Lich..."><label class="mbot-label" style="margin-top:8px;">Elites (po przecinku):</label><input type="text" id="elites-input" placeholder="np. Wilk Elite..."><div class="mbot-btn-row"><button class="mbot-btn-start" id="start-search">▶ Start</button><button class="mbot-btn-stop" id="stop-search">■ Stop</button></div></div><div id="mbot-panel-heal" class="mbot-panel"><div id="heal-selected"><img id="heal-item-img" src="" style="width:22px;height:22px;object-fit:contain;display:none;"><span id="heal-item-label" style="font-size:11px;color:#888;">Nie wybrano — kliknij slot</span></div><div class="mbot-row" style="justify-content:space-between;margin-bottom:4px;"><span style="color:#aaa;font-size:11px;">Ekwipunek:</span><button id="refresh-inv" class="mbot-btn-save" style="flex:0;padding:2px 10px;">🔄 Odśwież</button></div><div id="inv-grid"></div><div class="mbot-sep"></div><div class="mbot-row"><label>Lecz gdy HP ≤</label><input type="number" id="heal-threshold" min="1" max="99" style="flex:0;width:50px;"><span style="color:#888;">%</span></div><div class="mbot-btn-row"><button class="mbot-btn-save" id="save-heal-settings">💾 Zapisz ustawienia</button></div><div id="heal-save-notice">✓ Ustawienia zapisane</div></div><div id="mbot-footer"><span id="mbot-mode-label">● OFF</span><span id="mbot-hp-label">HP: —</span></div></div></div>`;
 
         return {
             build() {
@@ -218,8 +218,9 @@
                 const r=mob.getBoundingClientRect(),d=Math.hypot(hx-(r.left+r.width/2),hy-(r.top+r.height/2));
                 if(d<minDist){minDist=d;nearest=mob;}
             });
-            if(nearest)clickElement(nearest);
+            if(nearest){clickElement(nearest);handleBattleUISI();return true;}
             handleBattleUISI();
+            return false;
         }
         const MONSTER_TYPES=new Set([2,3,9]);
         function attackNearestNI(conditionFn){
@@ -239,7 +240,7 @@
                 if(nearest){MBot.bot.inBattle=true;window._g(`fight&a=attack&id=${nearest.d.id}`);}
             }catch(err){console.warn('[BOT NI]',err);}
         }
-        return { attackNearest(fn){if(MBot.adapter.isNI)attackNearestNI(fn);else attackNearestSI(fn);} };
+        return { attackNearest(fn){if(MBot.adapter.isNI){attackNearestNI(fn);return false;}return attackNearestSI(fn);} };
     })();
 
     MBot.heal = {
@@ -260,10 +261,30 @@
     };
 
     MBot.farm = (() => {
+        const NO_MOBS_THRESHOLD = 10;
         function getF(){return{minLevel:parseInt(document.getElementById('mob-min-level').value)||null,maxLevel:parseInt(document.getElementById('mob-max-level').value)||null,mobName:(document.getElementById('mob-name').value||'').toLowerCase().trim()};}
         function condNI(min,max,name){return d=>{if(!d.name)return false;if(min&&(d.lvl||0)<min)return false;if(max&&(d.lvl||0)>max)return false;if(name&&!d.name.toLowerCase().includes(name))return false;return true;};}
         function condSI(min,max,name){return tip=>{if(/Teleport|Grota|Wejście/.test(tip))return false;const m=tip.match(/<span[^>]*>(\d+)\s*lvl/);if(!m)return false;const l=parseInt(m[1]);if(min&&l<min)return false;if(max&&l>max)return false;if(name){const n=MBot.adapter.extractNameFromTip(tip)||'';if(!n.toLowerCase().includes(name))return false;}return true;};}
-        function tick(){const{minLevel,maxLevel,mobName}=getF();MBot.combat.attackNearest(MBot.adapter.isNI?condNI(minLevel,maxLevel,mobName):condSI(minLevel,maxLevel,mobName));MBot.heal.autoHeal();}
+        function tryGateway(){
+            if(!document.getElementById('gateway-enabled')?.checked)return;
+            const filter=(document.getElementById('gateway-dest')?.value||'').toLowerCase().trim();
+            const gws=[...document.querySelectorAll('.gw')];
+            const target=filter?gws.find(g=>(g.getAttribute('tip')||'').toLowerCase().includes(filter)):gws[0];
+            if(!target)return;
+            console.log('[BOT] Mapa czysta — brama:',target.getAttribute('tip'));
+            MBot.bot.transitioning=true; target.click();
+            setTimeout(()=>{MBot.bot.transitioning=false;},3500);
+        }
+        function tick(){
+            if(MBot.bot.transitioning)return;
+            const{minLevel,maxLevel,mobName}=getF();
+            const attacked=MBot.combat.attackNearest(MBot.adapter.isNI?condNI(minLevel,maxLevel,mobName):condSI(minLevel,maxLevel,mobName));
+            MBot.heal.autoHeal();
+            if(!MBot.adapter.isNI){
+                if(attacked){MBot.bot.noMobsTicks=0;}
+                else{MBot.bot.noMobsTicks++;if(MBot.bot.noMobsTicks>=NO_MOBS_THRESHOLD){MBot.bot.noMobsTicks=0;tryGateway();}}
+            }
+        }
         return{start(){const{minLevel,maxLevel,mobName}=getF();MBot.storage.setMany({mobMinLevel:minLevel??'',mobMaxLevel:maxLevel??'',mobName});MBot.bot.start('farm',tick);}};
     })();
 

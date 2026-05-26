@@ -8,6 +8,8 @@ MBot.bot = {
     targetElites: [],
     lastHealTime: 0,
     inBattle: false,
+    noMobsTicks: 0,
+    transitioning: false,
 
     start(mode, fn) {
         this.stop();
@@ -21,6 +23,8 @@ MBot.bot = {
         this.intervalId = null;
         this.mode = null;
         this.inBattle = false;
+        this.noMobsTicks = 0;
+        this.transitioning = false;
         MBot.ui.setStatus("off");
         MBot.ui.updateHP(null);
     }

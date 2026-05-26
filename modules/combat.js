@@ -45,8 +45,9 @@ MBot.combat = (() => {
             if (d < minDist) { minDist = d; nearest = mob; }
         });
 
-        if (nearest) clickElement(nearest);
+        if (nearest) { clickElement(nearest); handleBattleUISI(); return true; }
         handleBattleUISI();
+        return false;
     }
 
     // ── NI helpers ────────────────────────────────────────────────────────
@@ -88,11 +89,8 @@ MBot.combat = (() => {
     // ── Publiczne API ─────────────────────────────────────────────────────
     return {
         attackNearest(conditionFn) {
-            if (MBot.adapter.isNI) {
-                attackNearestNI(conditionFn);
-            } else {
-                attackNearestSI(conditionFn);
-            }
+            if (MBot.adapter.isNI) { attackNearestNI(conditionFn); return false; }
+            return attackNearestSI(conditionFn);
         }
     };
 })();
