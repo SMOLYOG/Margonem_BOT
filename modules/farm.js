@@ -1,9 +1,9 @@
 MBot.farm = (() => {
     function getFilters() {
         return {
-            minLevel: parseInt(document.getElementById("mob-min-level").value) || null,
-            maxLevel: parseInt(document.getElementById("mob-max-level").value) || null,
-            mobName:  (document.getElementById("mob-name").value || "").toLowerCase().trim()
+            minLevel: parseInt(document.getElementById('mob-min-level').value) || null,
+            maxLevel: parseInt(document.getElementById('mob-max-level').value) || null,
+            mobName:  (document.getElementById('mob-name').value || '').toLowerCase().trim()
         };
     }
 
@@ -18,7 +18,7 @@ MBot.farm = (() => {
             if (minLevel && lvl < minLevel) return false;
             if (maxLevel && lvl > maxLevel) return false;
             if (mobName) {
-                const name = MBot.inventory.extractNameFromTip(tip) || "";
+                const name = MBot.adapter.extractNameFromTip(tip) || '';
                 if (!name.toLowerCase().includes(mobName)) return false;
             }
             return true;
@@ -29,13 +29,17 @@ MBot.farm = (() => {
 
     return {
         start() {
+            if (!MBot.adapter.canFarm()) {
+                alert('[Margonem Bot] Farm/Search działa tylko w Starym Interfejsie (SI).\nNowy Interfejs używa canvas — API ataku na moby nie jest dostępne.');
+                return;
+            }
             const { minLevel, maxLevel, mobName } = getFilters();
             MBot.storage.setMany({
-                mobMinLevel: minLevel ?? "",
-                mobMaxLevel: maxLevel ?? "",
+                mobMinLevel: minLevel ?? '',
+                mobMaxLevel: maxLevel ?? '',
                 mobName
             });
-            MBot.bot.start("farm", tick);
+            MBot.bot.start('farm', tick);
         }
     };
 })();

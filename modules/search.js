@@ -11,11 +11,15 @@ MBot.search = (() => {
 
     return {
         start() {
-            MBot.bot.targetHeroes = document.getElementById("heroes-input").value
-                .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-            MBot.bot.targetElites = document.getElementById("elites-input").value
-                .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-            MBot.bot.start("search", tick);
+            if (!MBot.adapter.canFarm()) {
+                alert('[Margonem Bot] Farm/Search działa tylko w Starym Interfejsie (SI).\nNowy Interfejs używa canvas — API ataku na moby nie jest dostępne.');
+                return;
+            }
+            MBot.bot.targetHeroes = document.getElementById('heroes-input').value
+                .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            MBot.bot.targetElites = document.getElementById('elites-input').value
+                .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            MBot.bot.start('search', tick);
         }
     };
 })();
