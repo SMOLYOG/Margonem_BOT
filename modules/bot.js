@@ -1,0 +1,25 @@
+MBot.bot = {
+    mode: null,
+    intervalId: null,
+    healSlotEl: null,
+    healItemId: MBot.storage.get("healItemId"),
+    healThreshold: MBot.storage.get("healThreshold") ?? 30,
+    targetHeroes: [],
+    targetElites: [],
+    lastHealTime: 0,
+
+    start(mode, fn) {
+        this.stop();
+        this.mode = mode;
+        this.intervalId = setInterval(fn, MBot.config.TICK_MS);
+        MBot.ui.setStatus(mode);
+    },
+
+    stop() {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+        this.mode = null;
+        MBot.ui.setStatus("off");
+        MBot.ui.updateHP(null);
+    }
+};
