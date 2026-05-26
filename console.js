@@ -272,7 +272,7 @@
             const target=filter?gws.find(g=>(g.getAttribute('tip')||'').toLowerCase().includes(filter)):gws[0];
             if(!target)return;
             console.log('[BOT] Mapa czysta — brama:',target.getAttribute('tip'));
-            MBot.bot.transitioning=true; target.click();
+            MBot.bot.transitioning=true; try{target.click();}catch(e){/* game pathfinding crash — gateway still enters */}
             setTimeout(()=>{MBot.bot.transitioning=false;},3500);
         }
         function tick(){

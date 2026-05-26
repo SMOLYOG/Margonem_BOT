@@ -683,7 +683,7 @@
             if (!target) return;
             console.log('[BOT] Mapa czysta — przechodzę przez bramę:', target.getAttribute('tip'));
             MBot.bot.transitioning = true;
-            target.click();
+            try { target.click(); } catch(e) { /* game pathfinding crash — gateway still enters */ }
             setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
         }
 
