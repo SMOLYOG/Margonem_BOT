@@ -147,14 +147,15 @@ MBot.ui = (() => {
         }
         #inv-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(5, 50px);
             gap: 4px;
             margin: 6px 0;
-            max-height: 180px;
+            max-height: 216px;
             overflow-y: auto;
         }
         #inv-grid .slot {
-            aspect-ratio: 1;
+            width: 50px;
+            height: 50px;
             background: #2a2a2a;
             border: 1px solid #444;
             border-radius: 4px;
@@ -165,6 +166,7 @@ MBot.ui = (() => {
             position: relative;
             overflow: hidden;
             transition: border-color 0.12s;
+            box-sizing: border-box;
         }
         #inv-grid .slot:hover { border-color: #888; }
         #inv-grid .slot.selected { border: 2px solid #4caf50; background: #1a2e1a; }
