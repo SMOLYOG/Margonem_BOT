@@ -1,22 +1,22 @@
 // ==UserScript==
 // @name         Margonem Bot v8
 // @namespace    http://tampermonkey.net/
-// @version      8.1
+// @version      8.2
 // @description  Auto farm + hero/elite search + auto heal | SI + NI | modularny, z persystencją
 // @author
 // @match        https://gordion.margonem.pl/
 // @match        https://*.margonem.pl/*
 // @grant        none
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/config.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/adapter.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/inventory.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/heal.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/search.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/config.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/adapter.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/inventory.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/heal.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js?v=3
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/search.js?v=3
 // ==/UserScript==
 
 (function () {
