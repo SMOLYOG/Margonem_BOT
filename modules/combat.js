@@ -58,18 +58,21 @@ MBot.combat = (() => {
         if (MBot.bot.inBattle) return;
 
         try {
-            const hero = Engine.hero.autoPath.getCharacterPosition();
+            const hx = Engine.hero.d.x;
+            const hy = Engine.hero.d.y;
+            if (hx == null || hy == null) return;
 
             let nearest = null;
             let minDist = Infinity;
 
-            Engine.renderer.getList().forEach(o => {
-                if (o.canvasObjectType !== 'NPC') return;
+            // .slice() kopiuje listę — unikamy null-ów gdy gra modyfikuje ją w tle
+            Engine.renderer.getList().slice().forEach(o => {
+                if (!o || o.canvasObjectType !== 'NPC') return;
                 if (!o.d || !MONSTER_TYPES.has(o.d.type)) return;
                 if (MBot.config.FORBIDDEN_MOBS.some(n => (o.d.name || '').includes(n))) return;
                 if (!conditionFn(o.d)) return;
 
-                const d = Math.hypot(hero.x - o.d.x, hero.y - o.d.y);
+                const d = Math.hypot(hx - o.d.x, hy - o.d.y);
                 if (d < minDist) { minDist = d; nearest = o; }
             });
 
