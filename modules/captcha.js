@@ -12,8 +12,21 @@ MBot.captcha = (() => {
         return name.startsWith('*') && name.endsWith('*');
     }
 
-    // Wyciągnij literę z nazwy "*x*" → "x"
-    function _letterOf(name) { return name.slice(1, -1); }
+    function _letter(name) { return name.slice(1, -1); }
+
+    function _findExistingInstance() {
+        // Szukaj istniejącej instancji CaptchaAnswerWaiter w globalach
+        for (const key of Object.keys(window)) {
+            try {
+                const val = window[key];
+                if (val && typeof val === 'object' && typeof val.setCaptchaAnswer === 'function') {
+                    _log('Instancja CaptchaAnswerWaiter znaleziona: window.' + key);
+                    return val;
+                }
+            } catch(e) {}
+        }
+        return null;
+    }
 
     async function _solveCaptcha() {
         if (_solving) return;
@@ -26,63 +39,115 @@ MBot.captcha = (() => {
             const buttons   = container.querySelectorAll('.btn.btn-wood');
             const asterisks = [...buttons].filter(_isAsterisk);
             const names     = asterisks.map(b => b.querySelector('span.gfont').getAttribute('name'));
-            const letters   = names.map(_letterOf);
-            _log(`Gwiazdki: ${names.join(', ')} → litery: ${letters.join(', ')}`);
+            const letters   = names.map(_letter);
+            _log(`Gwiazdki: ${names.join(', ')}`);
 
-            // ── Strategia 1: bezpośrednie API gry ────────────────────────
-            const CAW = window.CaptchaAnswerWaiter;
-            if (typeof CAW === 'function') {
+            // ── 1. Szukaj istniejącej instancji w globalach ───────────────
+            let waiter = _findExistingInstance();
+
+            // ── 2. Jeśli nie ma — stwórz nową ────────────────────────────
+            if (!waiter && typeof window.CaptchaAnswerWaiter === 'function') {
                 try {
-                    const waiter = new CAW();
-                    // Zaloguj sourcę metod żeby zobaczyć jakich args potrzebują
-                    _log('init src: '    + waiter.init?.toString().slice(0, 200));
-                    _log('setAns src: '  + waiter.setCaptchaAnswer?.toString().slice(0, 200));
-                    _log('sendSrv src: ' + waiter.startSendToServerWaitToCaptcha?.toString().slice(0, 200));
+                    waiter = new window.CaptchaAnswerWaiter();
+                    _log('Nowa instancja: ' + Object.keys(waiter).join(', '));
+                } catch(e) { _log('new CaptchaAnswerWaiter error: ' + e.message); }
+            }
 
-                    // Próbuj różne formy argumentów
-                    const tries = [names, letters, names.join(','), letters.join(',')];
-                    for (const arg of tries) {
-                        try {
-                            _log('Próba setCaptchaAnswer(' + JSON.stringify(arg) + ')');
-                            if (waiter.init) waiter.init();
-                            waiter.setCaptchaAnswer(arg);
-                            await _delay(300);
-                            waiter.startSendToServerWaitToCaptcha();
-                            _log('✓ API call wysłany');
-                            await _delay(5000);
-                            _solving = false;
-                            return;
-                        } catch(e) { _log('  błąd: ' + e.message); }
+            if (waiter) {
+                // Zaloguj source kluczowych metod
+                _log('setCaptchaAnswer:\n' + waiter.setCaptchaAnswer?.toString().slice(0, 400));
+                _log('startSend:\n'        + waiter.startSendToServerWaitToCaptcha?.toString().slice(0, 400));
+                _log('init:\n'             + waiter.init?.toString().slice(0, 200));
+
+                try { if (waiter.init) waiter.init(); } catch(e) { _log('init err: ' + e.message); }
+
+                // Próba A: setCaptchaAnswer raz per kafelek (litera bez gwiazdek)
+                _log('--- Próba A: po jednej literze ---');
+                let ok = false;
+                try {
+                    for (const letter of letters) {
+                        _log('  setCaptchaAnswer(' + letter + ')');
+                        waiter.setCaptchaAnswer(letter);
+                        await _delay(150);
                     }
-                } catch(e) { _log('CaptchaAnswerWaiter error: ' + e.message); }
+                    await _delay(300);
+                    _log('  startSendToServerWaitToCaptcha()');
+                    waiter.startSendToServerWaitToCaptcha();
+                    _log('✓ Próba A wysłana');
+                    ok = true;
+                } catch(e) { _log('Próba A błąd: ' + e.message); }
+
+                if (!ok) {
+                    // Próba B: setCaptchaAnswer raz per kafelek (pełna nazwa *x*)
+                    _log('--- Próba B: po jednej pełnej nazwie ---');
+                    try {
+                        for (const name of names) {
+                            _log('  setCaptchaAnswer(' + name + ')');
+                            waiter.setCaptchaAnswer(name);
+                            await _delay(150);
+                        }
+                        await _delay(300);
+                        waiter.startSendToServerWaitToCaptcha();
+                        _log('✓ Próba B wysłana');
+                        ok = true;
+                    } catch(e) { _log('Próba B błąd: ' + e.message); }
+                }
+
+                if (!ok) {
+                    // Próba C: setCaptchaAnswer z tablicą liter
+                    _log('--- Próba C: tablica liter ---');
+                    try {
+                        waiter.setCaptchaAnswer(letters);
+                        await _delay(300);
+                        waiter.startSendToServerWaitToCaptcha();
+                        _log('✓ Próba C wysłana');
+                        ok = true;
+                    } catch(e) { _log('Próba C błąd: ' + e.message); }
+                }
+
+                if (!ok) {
+                    // Próba D: setCaptchaAnswer z elementem DOM przycisku
+                    _log('--- Próba D: z elementem DOM ---');
+                    try {
+                        for (let i = 0; i < asterisks.length; i++) {
+                            waiter.setCaptchaAnswer(letters[i], asterisks[i]);
+                            await _delay(150);
+                        }
+                        await _delay(300);
+                        waiter.startSendToServerWaitToCaptcha();
+                        _log('✓ Próba D wysłana');
+                        ok = true;
+                    } catch(e) { _log('Próba D błąd: ' + e.message); }
+                }
+
+                if (ok) {
+                    await _delay(5000);
+                    _solving = false;
+                    return;
+                }
             }
 
-            // ── Strategia 2: dodaj CSS klasę "selected" do przycisków ────
-            // (game może śledzić stan przez klasę)
-            _log('Strategia 2: CSS class toggle...');
-            for (const btn of asterisks) {
-                btn.classList.add('selected', 'active', 'pressed', 'checked');
-                const span = btn.querySelector('span.gfont');
-                if (span) span.classList.add('selected', 'active');
-            }
+            // ── Fallback: sprawdź klasy CSS przycisków po kliknięciu ──────
+            _log('=== Fallback DOM ===');
+            // Sprawdź jakie klasy mają przyciski przed kliknięciem
+            const firstBtn = buttons[0];
+            _log('btn classes przed: ' + firstBtn?.className);
 
-            // ── Strategia 3: klikanie DOM (ostatni fallback) ─────────────
-            _log('Strategia 3: DOM click...');
             for (const btn of asterisks) {
                 const label = btn.querySelector('.label') || btn;
                 const r = label.getBoundingClientRect();
-                const x = r.left + r.width / 2, y = r.top + r.height / 2;
-                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                const opts = { bubbles: true, cancelable: true, view: window,
+                    clientX: r.left + r.width/2, clientY: r.top + r.height/2 };
                 if (window.jQuery) try { window.jQuery(label).trigger('click'); } catch(e) {}
                 try { label.click(); } catch(e) {}
                 label.dispatchEvent(new MouseEvent('click', opts));
                 btn.dispatchEvent(new MouseEvent('click', opts));
-                await _delay(200);
+                await _delay(100);
             }
 
-            await _delay(500);
+            _log('btn classes po: ' + firstBtn?.className);
 
-            // Potwierdz
+            await _delay(400);
             const confirmBtn = document.querySelector('.captcha__confirm .btn.btn-wood');
             if (confirmBtn) {
                 _log('Klikam "Potwierdzam"');
@@ -105,8 +170,7 @@ MBot.captcha = (() => {
     async function _handleSolveNow(span) {
         _solving = true;
         _log('Klikam "Rozwiąż teraz"...');
-        const label = span.closest('.label') || span.parentElement;
-        const el = label || span;
+        const el = span.closest('.label') || span.parentElement || span;
         if (window.jQuery) try { window.jQuery(el).trigger('click'); } catch(e) {}
         try { el.click(); } catch(e) {}
         const r = el.getBoundingClientRect();
