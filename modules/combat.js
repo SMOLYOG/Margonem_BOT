@@ -51,10 +51,12 @@ MBot.combat = (() => {
     }
 
     function attackNearestSI(conditionFn) {
-        if (Date.now() < MBot.bot.banUntil) { handleBattleUISI(); return false; }
+        handleBattleUISI();
+        if (Date.now() < MBot.bot.banUntil) return false;
+        if (Date.now() - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
 
         const hero = document.getElementById('hero');
-        if (!hero) return;
+        if (!hero) return false;
 
         const hr = hero.getBoundingClientRect();
         const hx = hr.left + hr.width  / 2;
@@ -75,8 +77,11 @@ MBot.combat = (() => {
             if (d < minDist) { minDist = d; nearest = mob; }
         });
 
-        if (nearest) { clickElement(nearest); handleBattleUISI(); return true; }
-        handleBattleUISI();
+        if (nearest) {
+            MBot.bot.lastAttackTime = Date.now();
+            clickElement(nearest);
+            return true;
+        }
         return false;
     }
 

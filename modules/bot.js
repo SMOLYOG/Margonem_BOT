@@ -7,6 +7,7 @@ MBot.bot = {
     targetHeroes: [],
     targetElites: [],
     lastHealTime: 0,
+    lastAttackTime: 0,
     inBattle: false,
     noMobsTicks: 0,
     transitioning: false,

@@ -7,5 +7,6 @@ MBot.config = {
     ],
     TICK_MS: 400,
     HEAL_COOLDOWN_MS: 2000,
+    ATTACK_COOLDOWN_MS: 1500,
     STORAGE_KEY: "margonem_bot_v8"
 };

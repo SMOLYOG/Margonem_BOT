@@ -26,6 +26,7 @@ MBot.config = {
     ],
     TICK_MS: 400,
     HEAL_COOLDOWN_MS: 2000,
+    ATTACK_COOLDOWN_MS: 1500,
     STORAGE_KEY: "margonem_bot_v8"
 };
 
@@ -181,6 +182,7 @@ MBot.bot = {
     targetHeroes: [],
     targetElites: [],
     lastHealTime: 0,
+    lastAttackTime: 0,
     inBattle: false,
     noMobsTicks: 0,
     transitioning: false,
@@ -785,10 +787,12 @@ MBot.combat = (() => {
     }
 
     function attackNearestSI(conditionFn) {
-        if (Date.now() < MBot.bot.banUntil) { handleBattleUISI(); return false; }
+        handleBattleUISI();
+        if (Date.now() < MBot.bot.banUntil) return false;
+        if (Date.now() - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
 
         const hero = document.getElementById('hero');
-        if (!hero) return;
+        if (!hero) return false;
 
         const hr = hero.getBoundingClientRect();
         const hx = hr.left + hr.width  / 2;
@@ -809,8 +813,11 @@ MBot.combat = (() => {
             if (d < minDist) { minDist = d; nearest = mob; }
         });
 
-        if (nearest) { clickElement(nearest); handleBattleUISI(); return true; }
-        handleBattleUISI();
+        if (nearest) {
+            MBot.bot.lastAttackTime = Date.now();
+            clickElement(nearest);
+            return true;
+        }
         return false;
     }
 
@@ -1085,6 +1092,16 @@ MBot.captcha = (() => {
     function _log(msg) { console.log('[MBot CAPTCHA]', msg); }
     function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    function _dispatchClick(el) {
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width  / 2;
+        const y = r.top  + r.height / 2;
+        const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+        el.dispatchEvent(new MouseEvent('mousedown', opts));
+        el.dispatchEvent(new MouseEvent('mouseup',   opts));
+        el.dispatchEvent(new MouseEvent('click',     opts));
+    }
+
     function _isAsterisk(btn) {
         const span = btn.querySelector('span.gfont');
         if (!span) return false;
@@ -1092,8 +1109,9 @@ MBot.captcha = (() => {
         return name.startsWith('*') && name.endsWith('*');
     }
 
-    function _findClickable(span) {
-        return span.closest('.btn') || span.closest('button') || span.parentElement;
+    function _clickableOf(el) {
+        const btn = el.closest('.btn') || el.closest('button') || el.parentElement;
+        return (btn && btn.querySelector('.label')) ? btn.querySelector('.label') : btn || el;
     }
 
     async function _solveCaptcha() {
@@ -1109,60 +1127,60 @@ MBot.captcha = (() => {
 
             for (const btn of buttons) {
                 if (_isAsterisk(btn)) {
-                    btn.click();
+                    const label = btn.querySelector('.label') || btn;
+                    _dispatchClick(label);
                     _log('* klik: ' + btn.querySelector('span.gfont')?.getAttribute('name'));
-                    await _delay(150);
+                    await _delay(200);
                 }
             }
 
-            await _delay(300);
+            await _delay(400);
 
-            // Kliknij "Potwierdzam"
             const confirmSpan = [...document.querySelectorAll('span.gfont')].find(
                 s => s.getAttribute('name') === 'Potwierdzam'
             );
             if (confirmSpan) {
-                _findClickable(confirmSpan).click();
+                _dispatchClick(_clickableOf(confirmSpan));
                 _log('Kliknięto "Potwierdzam"');
             } else {
                 _log('Nie znaleziono "Potwierdzam"');
             }
         } catch (err) {
             _log('Błąd: ' + err.message);
-        } finally {
-            _solving = false;
         }
+        // Blokuj przez 5s — CAPTCHA powinna się zamknąć w tym czasie
+        await _delay(5000);
+        _solving = false;
     }
 
     async function _handleSolveNow(span) {
+        _solving = true;
         _log('Klikam "Rozwiąż teraz"...');
-        _findClickable(span).click();
-        // Poczekaj aż pojawi się .captcha__buttons
+        _dispatchClick(_clickableOf(span));
         for (let i = 0; i < 20; i++) {
-            await _delay(200);
+            await _delay(250);
             if (document.querySelector('.captcha__buttons')) {
-                await _delay(200);
+                await _delay(300);
+                _solving = false;
                 await _solveCaptcha();
                 return;
             }
         }
         _log('Timeout: .captcha__buttons nie pojawiło się');
+        _solving = false;
     }
 
     function _check() {
         if (_solving) return;
 
-        // Etap 1: pojawia się "Rozwiąż teraz"
         const solveNow = [...document.querySelectorAll('span.gfont')].find(
             s => s.getAttribute('name') === 'Rozwiąż teraz'
         );
         if (solveNow && solveNow.offsetParent !== null) {
-            _solving = true; // blokuj ponowne wejście zanim async ruszy
-            _handleSolveNow(solveNow).finally(() => { _solving = false; });
+            _handleSolveNow(solveNow);
             return;
         }
 
-        // Etap 2: .captcha__buttons już widoczne (np. po ręcznym kliknięciu)
         const container = document.querySelector('.captcha__buttons');
         if (container && container.offsetParent !== null) {
             _solveCaptcha();
