@@ -43,6 +43,11 @@ MBot.route = (() => {
         });
     }
 
+    function _mapFingerprint() {
+        return [...document.querySelectorAll('.gw')]
+            .map(gw => _gatewayName(gw.getAttribute('tip') || '')).sort().join('|');
+    }
+
     function _tryGateway(gatewayKey) {
         if (!gatewayKey) return;
         const gateways = [...document.querySelectorAll('.gw')];
@@ -51,14 +56,25 @@ MBot.route = (() => {
             console.warn('[BOT Route] Nie znaleziono bramy:', gatewayKey);
             return;
         }
+
         const nextStep = (_currentStep + 1) % _steps.length;
-        // Save next step BEFORE click — in case gateway causes full page reload
+        const fpBefore = _mapFingerprint();
+
+        // Zapisz następny etap PRZED klikiem — na wypadek pełnego przeładowania strony
         MBot.storage.set('routeCurrentStep', nextStep);
         console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
+
         setTimeout(() => {
-            _currentStep = nextStep;
+            const fpAfter = _mapFingerprint();
+            if (fpAfter === fpBefore) {
+                // Mapa się nie zmieniła — cofnij etap i pozwól botowi spróbować ponownie
+                console.warn('[BOT Route] Mapa nie zmieniła się — cofam etap, ponawiam');
+                MBot.storage.set('routeCurrentStep', _currentStep);
+            } else {
+                _currentStep = nextStep;
+            }
             MBot.bot.transitioning = false;
         }, 4000);
     }
