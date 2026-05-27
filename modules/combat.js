@@ -125,6 +125,14 @@ MBot.combat = (() => {
         attackNearest(conditionFn) {
             if (MBot.adapter.isNI) { attackNearestNI(conditionFn); return false; }
             return attackNearestSI(conditionFn);
+        },
+
+        isInBattle() {
+            if (MBot.adapter.isNI) return MBot.bot.inBattle;
+            const ab = document.getElementById('autobattleButton');
+            const bc = document.getElementById('battleclose');
+            return (ab && ab.style.display !== 'none') ||
+                   (bc && bc.style.display !== 'none');
         }
     };
 })();

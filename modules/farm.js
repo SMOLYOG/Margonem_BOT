@@ -35,6 +35,15 @@ MBot.farm = (() => {
         };
     }
 
+    function _clickEl(el) {
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, cancelable: true, view: window,
+            clientX: r.left + r.width  / 2,
+            clientY: r.top  + r.height / 2
+        }));
+    }
+
     function tryGateway() {
         if (!document.getElementById('gateway-enabled')?.checked) return;
         const filter = (document.getElementById('gateway-dest')?.value || '').toLowerCase().trim();
@@ -45,8 +54,8 @@ MBot.farm = (() => {
         if (!target) return;
         console.log('[BOT] Mapa czysta — przechodzę przez bramę:', target.getAttribute('tip'));
         MBot.bot.transitioning = true;
-        try { target.click(); } catch(e) { /* game pathfinding crash — gateway still enters */ }
-        setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+        try { _clickEl(target); } catch(e) {}
+        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
     }
 
     function tick() {
@@ -59,7 +68,7 @@ MBot.farm = (() => {
         MBot.heal.autoHeal();
 
         if (!MBot.adapter.isNI) {
-            if (attacked) {
+            if (attacked || MBot.combat.isInBattle()) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;

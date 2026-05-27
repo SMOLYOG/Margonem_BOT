@@ -861,6 +861,14 @@ MBot.combat = (() => {
         attackNearest(conditionFn) {
             if (MBot.adapter.isNI) { attackNearestNI(conditionFn); return false; }
             return attackNearestSI(conditionFn);
+        },
+
+        isInBattle() {
+            if (MBot.adapter.isNI) return MBot.bot.inBattle;
+            const ab = document.getElementById('autobattleButton');
+            const bc = document.getElementById('battleclose');
+            return (ab && ab.style.display !== 'none') ||
+                   (bc && bc.style.display !== 'none');
         }
     };
 })();
@@ -935,6 +943,15 @@ MBot.farm = (() => {
         };
     }
 
+    function _clickEl(el) {
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, cancelable: true, view: window,
+            clientX: r.left + r.width  / 2,
+            clientY: r.top  + r.height / 2
+        }));
+    }
+
     function tryGateway() {
         if (!document.getElementById('gateway-enabled')?.checked) return;
         const filter = (document.getElementById('gateway-dest')?.value || '').toLowerCase().trim();
@@ -945,8 +962,8 @@ MBot.farm = (() => {
         if (!target) return;
         console.log('[BOT] Mapa czysta — przechodzę przez bramę:', target.getAttribute('tip'));
         MBot.bot.transitioning = true;
-        try { target.click(); } catch(e) { /* game pathfinding crash — gateway still enters */ }
-        setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+        try { _clickEl(target); } catch(e) {}
+        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
     }
 
     function tick() {
@@ -959,7 +976,7 @@ MBot.farm = (() => {
         MBot.heal.autoHeal();
 
         if (!MBot.adapter.isNI) {
-            if (attacked) {
+            if (attacked || MBot.combat.isInBattle()) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;
@@ -1016,6 +1033,15 @@ MBot.route = (() => {
         };
     }
 
+    function _clickEl(el) {
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, cancelable: true, view: window,
+            clientX: r.left + r.width  / 2,
+            clientY: r.top  + r.height / 2
+        }));
+    }
+
     function _tryGateway() {
         const gateways = [...document.querySelectorAll('.gw')];
         const target = _selectedGateway
@@ -1024,8 +1050,8 @@ MBot.route = (() => {
         if (!target) return;
         console.log('[BOT Route] Przechodzę przez bramę:', _selectedGateway || '(pierwsza)');
         MBot.bot.transitioning = true;
-        try { target.click(); } catch(e) {}
-        setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+        try { _clickEl(target); } catch(e) {}
+        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
     }
 
     function tick() {
@@ -1034,7 +1060,8 @@ MBot.route = (() => {
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        if (attacked) {
+        // Nie liczymy "braku ataku" podczas walki — walka jest w toku
+        if (attacked || MBot.combat.isInBattle()) {
             MBot.bot.noMobsTicks = 0;
         } else {
             MBot.bot.noMobsTicks++;

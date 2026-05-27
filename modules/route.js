@@ -27,6 +27,15 @@ MBot.route = (() => {
         };
     }
 
+    function _clickEl(el) {
+        const r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, cancelable: true, view: window,
+            clientX: r.left + r.width  / 2,
+            clientY: r.top  + r.height / 2
+        }));
+    }
+
     function _tryGateway() {
         const gateways = [...document.querySelectorAll('.gw')];
         const target = _selectedGateway
@@ -35,8 +44,8 @@ MBot.route = (() => {
         if (!target) return;
         console.log('[BOT Route] Przechodzę przez bramę:', _selectedGateway || '(pierwsza)');
         MBot.bot.transitioning = true;
-        try { target.click(); } catch(e) {}
-        setTimeout(() => { MBot.bot.transitioning = false; }, 3500);
+        try { _clickEl(target); } catch(e) {}
+        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
     }
 
     function tick() {
@@ -45,7 +54,8 @@ MBot.route = (() => {
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        if (attacked) {
+        // Nie liczymy "braku ataku" podczas walki — walka jest w toku
+        if (attacked || MBot.combat.isInBattle()) {
             MBot.bot.noMobsTicks = 0;
         } else {
             MBot.bot.noMobsTicks++;
