@@ -6,16 +6,17 @@
 // @author       SMOLYOG
 // @match        https://*.margonem.pl/*
 // @grant        none
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/config.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/adapter.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/inventory.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/heal.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/route.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/config.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/storage.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/adapter.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/bot.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/ui.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/inventory.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/combat.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/heal.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/farm.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/route.js
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/modules/captcha.js
 // ==/UserScript==
 
 (function () {
