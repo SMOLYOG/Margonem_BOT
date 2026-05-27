@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Margonem Bot v8
 // @namespace    http://tampermonkey.net/
-// @version      8.4
-// @description  Auto farm + hero/elite search + auto heal | SI + NI | modularny, z persystencją
+// @version      9.0
+// @description  Auto farm + route/expowisko + auto heal + CAPTCHA solver | SI + NI | modularny, z persystencją
 // @author
 // @match        https://gordion.margonem.pl/
 // @match        https://*.margonem.pl/*
@@ -10,13 +10,14 @@
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/config.js?v=5
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js?v=5
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/adapter.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js?v=5
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js?v=6
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js?v=6
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/inventory.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js?v=5
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js?v=6
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/heal.js?v=5
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/search.js?v=5
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/route.js?v=1
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/captcha.js?v=1
 // ==/UserScript==
 
 (function () {
@@ -40,11 +41,6 @@
 
     document.getElementById('heal-threshold').value = MBot.bot.healThreshold;
 
-    const heroesInput = MBot.storage.get('heroesInput');
-    const elitesInput = MBot.storage.get('elitesInput');
-    if (heroesInput) document.getElementById('heroes-input').value = heroesInput;
-    if (elitesInput) document.getElementById('elites-input').value = elitesInput;
-
     const gwEnabled = MBot.storage.get('gatewayEnabled');
     const gwDest    = MBot.storage.get('gatewayDest');
     if (gwEnabled) document.getElementById('gateway-enabled').checked = true;
@@ -57,9 +53,24 @@
     document.getElementById('start-farm').addEventListener('click', () => MBot.farm.start());
     document.getElementById('stop-farm') .addEventListener('click', () => MBot.bot.stop());
 
-    // Przyciski Search
-    document.getElementById('start-search').addEventListener('click', () => MBot.search.start());
-    document.getElementById('stop-search') .addEventListener('click', () => MBot.bot.stop());
+    // Przyciski Route
+    document.getElementById('scan-mobs').addEventListener('click', () => {
+        const mobs = MBot.route.scanMobs();
+        MBot.ui.renderRouteMobs(mobs);
+    });
+    document.getElementById('scan-gateways').addEventListener('click', () => {
+        const gws = MBot.route.scanGateways();
+        MBot.ui.renderRouteGateways(gws);
+    });
+    document.getElementById('start-route').addEventListener('click', () => {
+        const checked = [...document.querySelectorAll('#route-mob-list input[type=checkbox]:checked')]
+            .map(cb => cb.value);
+        const gw = document.getElementById('route-gateway-select').value;
+        MBot.route.setSelectedMobs(checked);
+        MBot.route.setSelectedGateway(gw);
+        MBot.route.start();
+    });
+    document.getElementById('stop-route').addEventListener('click', () => MBot.bot.stop());
 
     // Heal panel
     document.getElementById('refresh-inv').addEventListener('click', () => MBot.inventory.render());
@@ -73,12 +84,30 @@
         setTimeout(() => { notice.style.display = 'none'; }, 2000);
     });
 
+    // CAPTCHA solver — uruchom obserwatora od razu
+    MBot.captcha.start();
+
+    // Przycisk CAPTCHA w UI
+    document.getElementById('captcha-toggle').addEventListener('click', () => {
+        const btn = document.getElementById('captcha-toggle');
+        if (btn.dataset.active === '1') {
+            MBot.captcha.stop();
+            btn.dataset.active = '0';
+            btn.textContent = '▶ Włącz auto-CAPTCHA';
+            btn.classList.remove('active');
+        } else {
+            MBot.captcha.start();
+            btn.dataset.active = '1';
+            btn.textContent = '■ Wyłącz auto-CAPTCHA';
+            btn.classList.add('active');
+        }
+    });
+
     // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
+    // Route mode wymaga wyboru mobów — nie restartuje automatycznie
     const savedMode = MBot.storage.get('botMode');
     if (savedMode === 'farm') {
         setTimeout(() => MBot.farm.start(), 2000);
-    } else if (savedMode === 'search') {
-        setTimeout(() => MBot.search.start(), 2000);
     }
 
 })();

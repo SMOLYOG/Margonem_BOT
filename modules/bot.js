@@ -10,6 +10,7 @@ MBot.bot = {
     inBattle: false,
     noMobsTicks: 0,
     transitioning: false,
+    banUntil: 0,
 
     start(mode, fn) {
         this.stop();

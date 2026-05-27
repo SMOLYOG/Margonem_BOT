@@ -181,6 +181,28 @@ MBot.ui = (() => {
             pointer-events: none;
         }
         #heal-save-notice { font-size: 10px; color: #4caf50; margin-top: 4px; display: none; }
+        #route-mob-list {
+            max-height: 110px; overflow-y: auto; background: #222;
+            border: 1px solid #3a3a3a; border-radius: 4px;
+            padding: 4px 6px; margin-bottom: 4px; min-height: 28px;
+        }
+        .route-hint { font-size: 10px; color: #555; }
+        #route-mob-list label { display:flex; align-items:center; gap:5px; padding:1px 0; cursor:pointer; }
+        #route-mob-list input[type=checkbox] { margin:0; cursor:pointer; flex-shrink:0; }
+        #route-mob-list span { font-size:10px; color:#ddd; }
+        #route-gateway-select {
+            width: 100%; background: #2a2a2a; border: 1px solid #444;
+            color: #e0e0e0; border-radius: 4px; padding: 3px 6px;
+            font-size: 11px; box-sizing: border-box; margin-bottom: 4px;
+        }
+        #mbot-ban-bar {
+            display: none; text-align: center; padding: 3px 8px;
+            background: #3a1a1a; color: #f55; font-size: 10px; font-weight: bold;
+            border-top: 1px solid #7a3a3a;
+        }
+        #captcha-toggle { width: 100%; }
+        #captcha-toggle.active { background: #1a3a1a; border-color: #3a7a3a; color: #8f8; }
+        .captcha-info { font-size: 10px; color: #666; margin-top: 8px; line-height: 1.4; }
     `;
 
     const HTML = `
@@ -195,8 +217,9 @@ MBot.ui = (() => {
             <div id="mbot-body">
                 <div id="mbot-tabs">
                     <button class="mbot-tab active" data-tab="farm">🤺 Farm</button>
-                    <button class="mbot-tab" data-tab="search">🧿 Search</button>
+                    <button class="mbot-tab" data-tab="route">🗺️ Route</button>
                     <button class="mbot-tab" data-tab="heal">💊 Heal</button>
+                    <button class="mbot-tab" data-tab="captcha">🔐 CAPTCHA</button>
                 </div>
 
                 <div id="mbot-panel-farm" class="mbot-panel active">
@@ -227,14 +250,20 @@ MBot.ui = (() => {
                     </div>
                 </div>
 
-                <div id="mbot-panel-search" class="mbot-panel">
-                    <label class="mbot-label">Heroes (po przecinku):</label>
-                    <input type="text" id="heroes-input" placeholder="np. Smok, Lich...">
-                    <label class="mbot-label" style="margin-top:8px;">Elites (po przecinku):</label>
-                    <input type="text" id="elites-input" placeholder="np. Wilk Elite...">
-                    <div class="mbot-btn-row">
-                        <button class="mbot-btn-start" id="start-search">▶ Start</button>
-                        <button class="mbot-btn-stop"  id="stop-search">■ Stop</button>
+                <div id="mbot-panel-route" class="mbot-panel">
+                    <div class="mbot-btn-row" style="margin-bottom:6px;">
+                        <button class="mbot-btn-save" id="scan-mobs">📍 Skanuj moby</button>
+                        <button class="mbot-btn-save" id="scan-gateways">🚪 Skanuj bramy</button>
+                    </div>
+                    <div id="route-mob-list"><span class="route-hint">Kliknij "Skanuj moby"</span></div>
+                    <div class="mbot-sep"></div>
+                    <label class="mbot-label">Przejście po wyczyszczeniu:</label>
+                    <select id="route-gateway-select">
+                        <option value="">— zostań na mapie —</option>
+                    </select>
+                    <div class="mbot-btn-row" style="margin-top:4px;">
+                        <button class="mbot-btn-start" id="start-route">▶ Start</button>
+                        <button class="mbot-btn-stop"  id="stop-route">■ Stop</button>
                     </div>
                 </div>
 
@@ -260,6 +289,16 @@ MBot.ui = (() => {
                     <div id="heal-save-notice">✓ Ustawienia zapisane</div>
                 </div>
 
+                <div id="mbot-panel-captcha" class="mbot-panel">
+                    <button class="mbot-btn-start active" id="captcha-toggle" data-active="1">■ Wyłącz auto-CAPTCHA</button>
+                    <div class="captcha-info">
+                        Auto-wykrywanie CAPTCHA w DOM.<br>
+                        Kliknie "Rozwiąż teraz", zaznaczy<br>
+                        gwiazdki <b>*x*</b> i potwierdzi.
+                    </div>
+                </div>
+
+                <div id="mbot-ban-bar"></div>
                 <div id="mbot-footer">
                     <span id="mbot-mode-label">● OFF</span>
                     <span id="mbot-hp-label">HP: —</span>
@@ -334,12 +373,55 @@ MBot.ui = (() => {
             });
         },
 
+        renderRouteMobs(mobs) {
+            const container = document.getElementById('route-mob-list');
+            if (!mobs || !mobs.size) {
+                container.innerHTML = '<span class="route-hint">Brak mobów na mapie</span>';
+                return;
+            }
+            container.innerHTML = '';
+            mobs.forEach((count, name) => {
+                const lbl = document.createElement('label');
+                const cb  = document.createElement('input');
+                cb.type = 'checkbox'; cb.value = name; cb.checked = true;
+                const txt = document.createElement('span');
+                txt.textContent = `${name} ×${count}`;
+                lbl.append(cb, txt);
+                container.appendChild(lbl);
+            });
+        },
+
+        renderRouteGateways(gateways) {
+            const sel = document.getElementById('route-gateway-select');
+            sel.innerHTML = '<option value="">— zostań na mapie —</option>';
+            (gateways || []).forEach(gw => {
+                const opt = document.createElement('option');
+                opt.value = gw.key;
+                opt.textContent = gw.label;
+                sel.appendChild(opt);
+            });
+        },
+
+        showBan(ms) {
+            const bar = document.getElementById('mbot-ban-bar');
+            if (!bar) return;
+            let rem = Math.ceil(ms / 1000);
+            bar.style.display = 'block';
+            bar.textContent = `⛔ Ban na bicie — ${rem}s`;
+            const iv = setInterval(() => {
+                rem--;
+                if (rem <= 0) { clearInterval(iv); bar.style.display = 'none'; }
+                else { bar.textContent = `⛔ Ban na bicie — ${rem}s`; }
+            }, 1000);
+        },
+
         setStatus(mode) {
             const dot   = document.getElementById("mbot-status-dot");
             const label = document.getElementById("mbot-mode-label");
             const map = {
                 off:    { text: "● OFF",    color: "#666"    },
                 farm:   { text: "● FARM",   color: "#4caf50" },
+                route:  { text: "● ROUTE",  color: "#ffa726" },
                 search: { text: "● SEARCH", color: "#64b5f6" }
             };
             const cfg = map[mode] || map.off;
