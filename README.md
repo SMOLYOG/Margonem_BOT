@@ -1,62 +1,114 @@
-# Margonem Bot - Auto Farm, Hero/Elite Search & Auto Heal
+# Margonem Bot
 
-**Version:** 5.0 (Beta)  
-⚠️ **Warning:** This is a beta version. It may contain bugs. Use at your own risk.  
-⚠️ **Note:** This bot works **only on the old Margonem interface**. The new interface is not supported.
+Tampermonkey userscript for [Margonem.pl](https://margonem.pl) — automatic mob farming, multi-step route chains, and auto heal.  
+Supports both **old interface (SI)** and **new interface (NI)**.
 
 ---
 
-## Overview
+## Quick Install
 
-Margonem Bot is a **Tampermonkey UserScript** for [Margonem](https://gordion.margonem.pl/) that automates:
+1. Install **Tampermonkey** — [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/pl/firefox/addon/tampermonkey/)
+2. Click **Install Script** below and confirm in Tampermonkey:
 
-- Mob farming
-- Hero and elite hunting
-- Auto healing with items
+   > [`release/MargonemBot.user.js`](https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/MargonemBot.user.js)
 
-The bot features a **tabbed UI** for easy control of each function.
+3. Open Margonem.pl — the bot panel appears in the top-right corner.
+
+Modules are loaded automatically from GitHub on every run. Updates apply instantly without reinstalling.
 
 ---
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| **Mob Farming** | Attack mobs based on level range or name, auto-loot included. |
-| **Hero/Elite Search** | Hunt specific heroes or elites entered as a comma-separated list. |
-| **Auto Heal** | Use healing items automatically when HP drops below a set threshold. |
+| Mode | Description |
+|------|-------------|
+| **Farm** | Attack mobs filtered by level range or name. Optional auto-gateway when the map is clear. |
+| **Route** | Multi-step chain — define mobs + exit gateway per map, bot loops indefinitely. Auto-restarts after page reload. |
+| **Heal** | Use a healing item from inventory automatically when HP drops below a configurable threshold. |
 
 ---
 
-## Installation
+## Farm
 
-1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser.  
-2. Create a new UserScript in Tampermonkey.  
-3. Paste the bot code and save.  
-4. Refresh [Margonem](https://gordion.margonem.pl/) using the **old interface**.
-
----
-
-## Usage
-
-1. Open the bot panel in the top-right corner.  
-2. Use tabs to configure:
-   - **Mob Farming** – min/max level, mob name.  
-   - **Hero Search** – heroes and elites.  
-   - **Auto Heal** – item and health threshold.  
-3. Start or stop each mode with the buttons provided.
+1. Go to the **Farm** tab
+2. Set optional filters: min/max mob level, mob name
+3. Optionally enable **Auto-gateway** and enter part of the gateway name
+4. Click **▶ Start**
 
 ---
 
-## Notes
+## Route
 
-- Beta version; may be unstable.  
-- Works only on the **old Margonem interface**.  
-- Using bots may violate game rules. Use responsibly.  
-- Recommended on a secondary/test account.
+Define a chain of maps — the bot kills mobs on each map, crosses the gateway, and continues to the next step in a loop.
+
+### Setup:
+
+1. Go to the first map, open the **Route** tab
+2. Click **Skanuj moby** → check the mobs to kill
+3. Click **Skanuj bramy** → pick the exit gateway
+4. Click **+ Dodaj etap**
+5. Manually walk to the next map and repeat steps 2–4
+6. Click **▶ Start**
+
+### Passthrough step (no combat):
+
+Leave mobs unchecked, select only a gateway, and click **+ Dodaj etap** — appears as `⚡ przejście`.
+
+### Example route:
+
+```
+#1  Żuk, Kruk       →  Jaskinia Rozpaczy
+#2  ⚡ przejście    →  Równina Wschodnia
+#3  Bandyta, Rycerz →  Powrót do Miasta
+```
+
+The bot restarts from step #1 and loops indefinitely.  
+After each gateway the page reloads — the bot **resumes automatically** at the correct step.
 
 ---
 
-## License
+## Heal
 
-MIT License – use and modify at your own risk.
+1. Open the **Heal** tab
+2. Click the healing item slot in the inventory panel
+3. Set the HP threshold (default 30%)
+4. Click **Zapisz ustawienia**
+
+Heal runs in the background regardless of farm/route mode.
+
+---
+
+## Project Structure
+
+```
+release/
+├── MargonemBot.user.js   ← install this in Tampermonkey
+└── modules/
+    ├── config.js
+    ├── storage.js
+    ├── adapter.js
+    ├── bot.js
+    ├── ui.js
+    ├── inventory.js
+    ├── combat.js
+    ├── heal.js
+    ├── farm.js
+    ├── route.js
+    └── captcha.js
+
+modules/                  ← development source
+```
+
+---
+
+## Known Limitations
+
+- **Auto-CAPTCHA** — in development, not available in this release
+- Bot requires the game tab to be active (browser cannot be minimized)
+- NI (new interface): Farm and Heal work; Route is in testing
+
+---
+
+## Version
+
+`1.0.0` — Farm · Route · Heal | Auto-CAPTCHA: coming soon
