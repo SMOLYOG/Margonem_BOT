@@ -5,11 +5,31 @@ MBot.captcha = (() => {
     function _log(msg) { console.log('[MBot CAPTCHA]', msg); }
     function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-    function _isAsterisk(btn) {
+    // Read the question to determine which symbol the captcha is asking for.
+    // e.g. "Zaznacz wszystkie odpowiedzi z gwiazdką" → '*'
+    function _targetSymbol() {
+        const q = (document.querySelector('.captcha__question')?.textContent || '').toLowerCase();
+        if (/gwiazdk/.test(q))           return '*';
+        if (/wykrzyknik/.test(q))        return '!';
+        if (/dolar/.test(q))             return '$';
+        if (/et\b|małp|ampersand/.test(q)) return '&';
+        if (/hash|krzyż|płotek/.test(q)) return '#';
+        if (/\bat\b/.test(q))            return '@';
+        // Fallback: find the symbol that wraps most buttons
+        const counts = {};
+        document.querySelectorAll('.captcha__buttons .btn.btn-wood span.gfont').forEach(s => {
+            const n = s.getAttribute('name') || '';
+            if (n.length >= 3) { const c = n[0]; if (n.endsWith(c)) counts[c] = (counts[c] || 0) + 1; }
+        });
+        return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || '*';
+    }
+
+    function _isTarget(btn) {
         const span = btn.querySelector('span.gfont');
         if (!span) return false;
         const name = span.getAttribute('name') || '';
-        return name.startsWith('*') && name.endsWith('*');
+        const sym = _targetSymbol();
+        return name.length >= 3 && name.startsWith(sym) && name.endsWith(sym);
     }
 
     function _letter(name) { return name.slice(1, -1); }
@@ -36,11 +56,13 @@ MBot.captcha = (() => {
             const container = document.querySelector('.captcha__buttons');
             if (!container) { _log('Brak .captcha__buttons'); _solving = false; return; }
 
+            const sym       = _targetSymbol();
+            _log(`Symbol docelowy: "${sym}"`);
             const buttons   = container.querySelectorAll('.btn.btn-wood');
-            const asterisks = [...buttons].filter(_isAsterisk);
-            const names     = asterisks.map(b => b.querySelector('span.gfont').getAttribute('name'));
+            const targets   = [...buttons].filter(_isTarget);
+            const names     = targets.map(b => b.querySelector('span.gfont').getAttribute('name'));
             const letters   = names.map(_letter);
-            _log(`Gwiazdki: ${names.join(', ')} → litery: ${letters.join(', ')}`);
+            _log(`Docelowe: ${names.join(', ')} → litery: ${letters.join(', ')}`);
 
             if (typeof window.CaptchaAnswerWaiter !== 'function') {
                 _log('Brak CaptchaAnswerWaiter!');
