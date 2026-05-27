@@ -44,7 +44,9 @@ MBot.storage = (() => {
         healItemId: null,
         botMode: null,
         gatewayEnabled: false,
-        gatewayDest: ""
+        gatewayDest: "",
+        routeSteps: [],
+        routeCurrentStep: 0
     };
 
     function load() {
@@ -407,6 +409,20 @@ MBot.ui = (() => {
             color: #e0e0e0; border-radius: 4px; padding: 3px 6px;
             font-size: 11px; box-sizing: border-box; margin-bottom: 4px;
         }
+        #route-steps-list {
+            max-height: 110px; overflow-y: auto; margin-bottom: 4px; min-height: 22px;
+        }
+        .route-step {
+            display: flex; align-items: center; gap: 4px;
+            padding: 3px 5px; border-radius: 3px; margin-bottom: 2px;
+            background: #222; border: 1px solid #333; font-size: 10px; color: #ccc;
+        }
+        .route-step.active-step { border-color: #ffa726; background: #2a1a00; color: #ffd580; }
+        .route-step-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .route-step-del {
+            background: none; border: none; color: #f55; cursor: pointer;
+            font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0;
+        }
         #mbot-ban-bar {
             display: none; text-align: center; padding: 3px 8px;
             background: #3a1a1a; color: #f55; font-size: 10px; font-weight: bold;
@@ -468,14 +484,17 @@ MBot.ui = (() => {
                         <button class="mbot-btn-save" id="scan-gateways">🚪 Skanuj bramy</button>
                     </div>
                     <div id="route-mob-list"><span class="route-hint">Kliknij "Skanuj moby"</span></div>
-                    <div class="mbot-sep"></div>
-                    <label class="mbot-label">Przejście po wyczyszczeniu:</label>
+                    <label class="mbot-label" style="margin-top:4px;">Przejście po etapie:</label>
                     <select id="route-gateway-select">
                         <option value="">— zostań na mapie —</option>
                     </select>
+                    <button class="mbot-btn-save" id="add-route-step" style="width:100%;margin-bottom:2px;">+ Dodaj etap</button>
+                    <div class="mbot-sep" style="margin:5px 0;"></div>
+                    <div id="route-steps-list"><span class="route-hint">Brak etapów — dodaj powyżej</span></div>
                     <div class="mbot-btn-row" style="margin-top:4px;">
                         <button class="mbot-btn-start" id="start-route">▶ Start</button>
                         <button class="mbot-btn-stop"  id="stop-route">■ Stop</button>
+                        <button class="mbot-btn-stop"  id="clear-route" style="flex:0;padding:5px 10px;" title="Wyczyść wszystkie etapy">🗑</button>
                     </div>
                 </div>
 
@@ -600,6 +619,31 @@ MBot.ui = (() => {
                 txt.textContent = `${name} ×${count}`;
                 lbl.append(cb, txt);
                 container.appendChild(lbl);
+            });
+        },
+
+        renderRouteSteps(steps) {
+            const container = document.getElementById('route-steps-list');
+            if (!steps || steps.length === 0) {
+                container.innerHTML = '<span class="route-hint">Brak etapów — dodaj powyżej</span>';
+                return;
+            }
+            container.innerHTML = '';
+            steps.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'route-step' + (s.active ? ' active-step' : '');
+                const label = document.createElement('span');
+                label.className = 'route-step-label';
+                const mobStr = s.mobs.join(', ') || '(brak mobów)';
+                const gwStr  = s.gateway || '(zostań)';
+                label.textContent = `#${s.index + 1}  ${mobStr}  →  ${gwStr}`;
+                label.title = label.textContent;
+                const del = document.createElement('button');
+                del.className = 'route-step-del';
+                del.dataset.index = s.index;
+                del.textContent = '×';
+                div.append(label, del);
+                container.appendChild(div);
             });
         },
 
@@ -1008,8 +1052,8 @@ MBot.farm = (() => {
 MBot.route = (() => {
     const NO_MOBS_THRESHOLD = 10;
 
-    let _selectedMobs = new Set();
-    let _selectedGateway = null;
+    let _steps = [];       // [{mobs: Set<string>, gateway: string|null}]
+    let _currentStep = 0;
 
     function _gatewayName(tip) {
         const tmp = document.createElement('div');
@@ -1018,19 +1062,19 @@ MBot.route = (() => {
         return (bold ? bold.textContent : tmp.textContent).trim() || '(brama)';
     }
 
-    function _buildConditionSI() {
+    function _buildConditionSI(mobs) {
         return tip => {
             if (/Teleport|Grota|Wejście/.test(tip)) return false;
-            if (_selectedMobs.size === 0) return false;
+            if (mobs.size === 0) return false;
             const name = (MBot.adapter.extractNameFromTip(tip) || '').toLowerCase();
-            return _selectedMobs.has(name);
+            return mobs.has(name);
         };
     }
 
-    function _buildConditionNI() {
+    function _buildConditionNI(mobs) {
         return d => {
-            if (!d.name || _selectedMobs.size === 0) return false;
-            return _selectedMobs.has(d.name.toLowerCase());
+            if (!d.name || mobs.size === 0) return false;
+            return mobs.has(d.name.toLowerCase());
         };
     }
 
@@ -1043,25 +1087,44 @@ MBot.route = (() => {
         }));
     }
 
-    function _tryGateway() {
+    function _saveState() {
+        MBot.storage.setMany({
+            routeSteps: _steps.map(s => ({ mobs: [...s.mobs], gateway: s.gateway })),
+            routeCurrentStep: _currentStep
+        });
+    }
+
+    function _tryGateway(gatewayKey) {
+        if (!gatewayKey) return;
         const gateways = [...document.querySelectorAll('.gw')];
-        const target = _selectedGateway
-            ? gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === _selectedGateway)
-            : gateways[0];
-        if (!target) return;
-        console.log('[BOT Route] Przechodzę przez bramę:', _selectedGateway || '(pierwsza)');
+        const target = gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === gatewayKey);
+        if (!target) {
+            console.warn('[BOT Route] Nie znaleziono bramy:', gatewayKey);
+            return;
+        }
+        const nextStep = (_currentStep + 1) % _steps.length;
+        // Save next step BEFORE click — in case gateway causes full page reload
+        MBot.storage.set('routeCurrentStep', nextStep);
+        console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
-        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
+        setTimeout(() => {
+            _currentStep = nextStep;
+            MBot.bot.transitioning = false;
+        }, 4000);
     }
 
     function tick() {
         if (MBot.bot.transitioning) return;
-        const conditionFn = MBot.adapter.isNI ? _buildConditionNI() : _buildConditionSI();
+        const step = _steps[_currentStep];
+        if (!step) return;
+
+        const conditionFn = MBot.adapter.isNI
+            ? _buildConditionNI(step.mobs)
+            : _buildConditionSI(step.mobs);
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        // Nie liczymy ticków zaraz po walce — dajemy 8s na zakończenie bitwy
         const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
         if (attacked || inOrJustAfterBattle) {
             MBot.bot.noMobsTicks = 0;
@@ -1069,7 +1132,7 @@ MBot.route = (() => {
             MBot.bot.noMobsTicks++;
             if (MBot.bot.noMobsTicks >= NO_MOBS_THRESHOLD) {
                 MBot.bot.noMobsTicks = 0;
-                _tryGateway();
+                _tryGateway(step.gateway);
             }
         }
     }
@@ -1095,19 +1158,52 @@ MBot.route = (() => {
             }));
         },
 
-        setSelectedMobs(names) {
-            _selectedMobs = new Set(names.map(n => n.toLowerCase()));
+        addStep(names, gateway) {
+            _steps.push({
+                mobs: new Set(names.map(n => n.toLowerCase())),
+                gateway: gateway || null
+            });
+            _saveState();
         },
 
-        setSelectedGateway(key) {
-            _selectedGateway = key || null;
+        removeStep(index) {
+            _steps.splice(index, 1);
+            if (_currentStep >= _steps.length && _steps.length > 0) _currentStep = _steps.length - 1;
+            if (_steps.length === 0) _currentStep = 0;
+            _saveState();
+        },
+
+        clearSteps() {
+            _steps = [];
+            _currentStep = 0;
+            _saveState();
+        },
+
+        getSteps() {
+            return _steps.map((s, i) => ({
+                index: i,
+                mobs: [...s.mobs],
+                gateway: s.gateway,
+                active: i === _currentStep && MBot.bot.mode === 'route'
+            }));
+        },
+
+        loadFromStorage() {
+            const saved = MBot.storage.get('routeSteps') || [];
+            const savedStep = MBot.storage.get('routeCurrentStep') || 0;
+            _steps = saved.map(s => ({
+                mobs: new Set((s.mobs || []).map(n => n.toLowerCase())),
+                gateway: s.gateway || null
+            }));
+            _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
         },
 
         start() {
-            if (_selectedMobs.size === 0) {
-                console.warn('[BOT Route] Nie wybrano mobów — skanuj i zaznacz najpierw');
+            if (_steps.length === 0) {
+                console.warn('[BOT Route] Brak etapów — dodaj etapy najpierw');
                 return;
             }
+            _saveState();
             MBot.bot.start('route', tick);
         }
     };
@@ -1259,6 +1355,10 @@ MBot.captcha = (() => {
     if (gwEnabled) document.getElementById('gateway-enabled').checked = true;
     if (gwDest)    document.getElementById('gateway-dest').value = gwDest;
 
+    // Wczytaj zapisane etapy route i wyświetl
+    MBot.route.loadFromStorage();
+    MBot.ui.renderRouteSteps(MBot.route.getSteps());
+
     // W NI: rejestruj callback na koniec walki (auto-heal po battle)
     MBot.adapter.onBattleClose(() => MBot.heal.autoHeal());
 
@@ -1266,24 +1366,43 @@ MBot.captcha = (() => {
     document.getElementById('start-farm').addEventListener('click', () => MBot.farm.start());
     document.getElementById('stop-farm') .addEventListener('click', () => MBot.bot.stop());
 
-    // Przyciski Route
+    // Przyciski Route — builder
     document.getElementById('scan-mobs').addEventListener('click', () => {
-        const mobs = MBot.route.scanMobs();
-        MBot.ui.renderRouteMobs(mobs);
+        MBot.ui.renderRouteMobs(MBot.route.scanMobs());
     });
     document.getElementById('scan-gateways').addEventListener('click', () => {
-        const gws = MBot.route.scanGateways();
-        MBot.ui.renderRouteGateways(gws);
+        MBot.ui.renderRouteGateways(MBot.route.scanGateways());
     });
-    document.getElementById('start-route').addEventListener('click', () => {
+    document.getElementById('add-route-step').addEventListener('click', () => {
         const checked = [...document.querySelectorAll('#route-mob-list input[type=checkbox]:checked')]
             .map(cb => cb.value);
+        if (checked.length === 0) return;
         const gw = document.getElementById('route-gateway-select').value;
-        MBot.route.setSelectedMobs(checked);
-        MBot.route.setSelectedGateway(gw);
+        MBot.route.addStep(checked, gw);
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
+        // Wyczyść builder po dodaniu
+        MBot.ui.renderRouteMobs(null);
+        MBot.ui.renderRouteGateways([]);
+    });
+
+    // Delegowane usuwanie etapów
+    document.getElementById('route-steps-list').addEventListener('click', e => {
+        const btn = e.target.closest('.route-step-del');
+        if (!btn) return;
+        MBot.route.removeStep(parseInt(btn.dataset.index));
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
+    });
+
+    // Start / Stop / Wyczyść Route
+    document.getElementById('start-route').addEventListener('click', () => {
         MBot.route.start();
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
     });
     document.getElementById('stop-route').addEventListener('click', () => MBot.bot.stop());
+    document.getElementById('clear-route').addEventListener('click', () => {
+        MBot.route.clearSteps();
+        MBot.ui.renderRouteSteps([]);
+    });
 
     // Heal panel
     document.getElementById('refresh-inv').addEventListener('click', () => MBot.inventory.render());
@@ -1300,7 +1419,6 @@ MBot.captcha = (() => {
     // CAPTCHA solver — uruchom obserwatora od razu
     MBot.captcha.start();
 
-    // Przycisk CAPTCHA w UI
     document.getElementById('captcha-toggle').addEventListener('click', () => {
         const btn = document.getElementById('captcha-toggle');
         if (btn.dataset.active === '1') {
@@ -1317,10 +1435,16 @@ MBot.captcha = (() => {
     });
 
     // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
-    // Route mode wymaga wyboru mobów — nie restartuje automatycznie
     const savedMode = MBot.storage.get('botMode');
     if (savedMode === 'farm') {
         setTimeout(() => MBot.farm.start(), 2000);
+    } else if (savedMode === 'route') {
+        setTimeout(() => {
+            // Etapy już wczytane przez loadFromStorage() powyżej
+            MBot.ui.switchTab('route');
+            MBot.route.start();
+            MBot.ui.renderRouteSteps(MBot.route.getSteps());
+        }, 2000);
     }
 
 })();

@@ -8,16 +8,16 @@
 // @match        https://*.margonem.pl/*
 // @grant        none
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/config.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js?v=5
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/storage.js?v=6
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/adapter.js?v=5
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/bot.js?v=6
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js?v=6
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/ui.js?v=7
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/inventory.js?v=5
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/combat.js?v=6
 // @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/heal.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js?v=5
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/route.js?v=1
-// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/captcha.js?v=1
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/farm.js?v=6
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/route.js?v=2
+// @require      https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/modules/captcha.js?v=2
 // ==/UserScript==
 
 (function () {
@@ -46,6 +46,10 @@
     if (gwEnabled) document.getElementById('gateway-enabled').checked = true;
     if (gwDest)    document.getElementById('gateway-dest').value = gwDest;
 
+    // Wczytaj zapisane etapy route i wyświetl
+    MBot.route.loadFromStorage();
+    MBot.ui.renderRouteSteps(MBot.route.getSteps());
+
     // W NI: rejestruj callback na koniec walki (auto-heal po battle)
     MBot.adapter.onBattleClose(() => MBot.heal.autoHeal());
 
@@ -53,24 +57,43 @@
     document.getElementById('start-farm').addEventListener('click', () => MBot.farm.start());
     document.getElementById('stop-farm') .addEventListener('click', () => MBot.bot.stop());
 
-    // Przyciski Route
+    // Przyciski Route — builder
     document.getElementById('scan-mobs').addEventListener('click', () => {
-        const mobs = MBot.route.scanMobs();
-        MBot.ui.renderRouteMobs(mobs);
+        MBot.ui.renderRouteMobs(MBot.route.scanMobs());
     });
     document.getElementById('scan-gateways').addEventListener('click', () => {
-        const gws = MBot.route.scanGateways();
-        MBot.ui.renderRouteGateways(gws);
+        MBot.ui.renderRouteGateways(MBot.route.scanGateways());
     });
-    document.getElementById('start-route').addEventListener('click', () => {
+    document.getElementById('add-route-step').addEventListener('click', () => {
         const checked = [...document.querySelectorAll('#route-mob-list input[type=checkbox]:checked')]
             .map(cb => cb.value);
+        if (checked.length === 0) return;
         const gw = document.getElementById('route-gateway-select').value;
-        MBot.route.setSelectedMobs(checked);
-        MBot.route.setSelectedGateway(gw);
+        MBot.route.addStep(checked, gw);
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
+        // Wyczyść builder po dodaniu
+        MBot.ui.renderRouteMobs(null);
+        MBot.ui.renderRouteGateways([]);
+    });
+
+    // Delegowane usuwanie etapów
+    document.getElementById('route-steps-list').addEventListener('click', e => {
+        const btn = e.target.closest('.route-step-del');
+        if (!btn) return;
+        MBot.route.removeStep(parseInt(btn.dataset.index));
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
+    });
+
+    // Start / Stop / Wyczyść Route
+    document.getElementById('start-route').addEventListener('click', () => {
         MBot.route.start();
+        MBot.ui.renderRouteSteps(MBot.route.getSteps());
     });
     document.getElementById('stop-route').addEventListener('click', () => MBot.bot.stop());
+    document.getElementById('clear-route').addEventListener('click', () => {
+        MBot.route.clearSteps();
+        MBot.ui.renderRouteSteps([]);
+    });
 
     // Heal panel
     document.getElementById('refresh-inv').addEventListener('click', () => MBot.inventory.render());
@@ -87,7 +110,6 @@
     // CAPTCHA solver — uruchom obserwatora od razu
     MBot.captcha.start();
 
-    // Przycisk CAPTCHA w UI
     document.getElementById('captcha-toggle').addEventListener('click', () => {
         const btn = document.getElementById('captcha-toggle');
         if (btn.dataset.active === '1') {
@@ -104,10 +126,16 @@
     });
 
     // Auto-restart po przeładowaniu strony (np. po przejściu przez bramę)
-    // Route mode wymaga wyboru mobów — nie restartuje automatycznie
     const savedMode = MBot.storage.get('botMode');
     if (savedMode === 'farm') {
         setTimeout(() => MBot.farm.start(), 2000);
+    } else if (savedMode === 'route') {
+        setTimeout(() => {
+            // Etapy już wczytane przez loadFromStorage() powyżej
+            MBot.ui.switchTab('route');
+            MBot.route.start();
+            MBot.ui.renderRouteSteps(MBot.route.getSteps());
+        }, 2000);
     }
 
 })();

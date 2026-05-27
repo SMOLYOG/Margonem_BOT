@@ -195,6 +195,20 @@ MBot.ui = (() => {
             color: #e0e0e0; border-radius: 4px; padding: 3px 6px;
             font-size: 11px; box-sizing: border-box; margin-bottom: 4px;
         }
+        #route-steps-list {
+            max-height: 110px; overflow-y: auto; margin-bottom: 4px; min-height: 22px;
+        }
+        .route-step {
+            display: flex; align-items: center; gap: 4px;
+            padding: 3px 5px; border-radius: 3px; margin-bottom: 2px;
+            background: #222; border: 1px solid #333; font-size: 10px; color: #ccc;
+        }
+        .route-step.active-step { border-color: #ffa726; background: #2a1a00; color: #ffd580; }
+        .route-step-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .route-step-del {
+            background: none; border: none; color: #f55; cursor: pointer;
+            font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0;
+        }
         #mbot-ban-bar {
             display: none; text-align: center; padding: 3px 8px;
             background: #3a1a1a; color: #f55; font-size: 10px; font-weight: bold;
@@ -256,14 +270,17 @@ MBot.ui = (() => {
                         <button class="mbot-btn-save" id="scan-gateways">🚪 Skanuj bramy</button>
                     </div>
                     <div id="route-mob-list"><span class="route-hint">Kliknij "Skanuj moby"</span></div>
-                    <div class="mbot-sep"></div>
-                    <label class="mbot-label">Przejście po wyczyszczeniu:</label>
+                    <label class="mbot-label" style="margin-top:4px;">Przejście po etapie:</label>
                     <select id="route-gateway-select">
                         <option value="">— zostań na mapie —</option>
                     </select>
+                    <button class="mbot-btn-save" id="add-route-step" style="width:100%;margin-bottom:2px;">+ Dodaj etap</button>
+                    <div class="mbot-sep" style="margin:5px 0;"></div>
+                    <div id="route-steps-list"><span class="route-hint">Brak etapów — dodaj powyżej</span></div>
                     <div class="mbot-btn-row" style="margin-top:4px;">
                         <button class="mbot-btn-start" id="start-route">▶ Start</button>
                         <button class="mbot-btn-stop"  id="stop-route">■ Stop</button>
+                        <button class="mbot-btn-stop"  id="clear-route" style="flex:0;padding:5px 10px;" title="Wyczyść wszystkie etapy">🗑</button>
                     </div>
                 </div>
 
@@ -388,6 +405,31 @@ MBot.ui = (() => {
                 txt.textContent = `${name} ×${count}`;
                 lbl.append(cb, txt);
                 container.appendChild(lbl);
+            });
+        },
+
+        renderRouteSteps(steps) {
+            const container = document.getElementById('route-steps-list');
+            if (!steps || steps.length === 0) {
+                container.innerHTML = '<span class="route-hint">Brak etapów — dodaj powyżej</span>';
+                return;
+            }
+            container.innerHTML = '';
+            steps.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'route-step' + (s.active ? ' active-step' : '');
+                const label = document.createElement('span');
+                label.className = 'route-step-label';
+                const mobStr = s.mobs.join(', ') || '(brak mobów)';
+                const gwStr  = s.gateway || '(zostań)';
+                label.textContent = `#${s.index + 1}  ${mobStr}  →  ${gwStr}`;
+                label.title = label.textContent;
+                const del = document.createElement('button');
+                del.className = 'route-step-del';
+                del.dataset.index = s.index;
+                del.textContent = '×';
+                div.append(label, del);
+                container.appendChild(div);
             });
         },
 

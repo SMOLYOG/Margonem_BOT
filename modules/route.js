@@ -1,8 +1,8 @@
 MBot.route = (() => {
     const NO_MOBS_THRESHOLD = 10;
 
-    let _selectedMobs = new Set();
-    let _selectedGateway = null;
+    let _steps = [];       // [{mobs: Set<string>, gateway: string|null}]
+    let _currentStep = 0;
 
     function _gatewayName(tip) {
         const tmp = document.createElement('div');
@@ -11,19 +11,19 @@ MBot.route = (() => {
         return (bold ? bold.textContent : tmp.textContent).trim() || '(brama)';
     }
 
-    function _buildConditionSI() {
+    function _buildConditionSI(mobs) {
         return tip => {
             if (/Teleport|Grota|Wejście/.test(tip)) return false;
-            if (_selectedMobs.size === 0) return false;
+            if (mobs.size === 0) return false;
             const name = (MBot.adapter.extractNameFromTip(tip) || '').toLowerCase();
-            return _selectedMobs.has(name);
+            return mobs.has(name);
         };
     }
 
-    function _buildConditionNI() {
+    function _buildConditionNI(mobs) {
         return d => {
-            if (!d.name || _selectedMobs.size === 0) return false;
-            return _selectedMobs.has(d.name.toLowerCase());
+            if (!d.name || mobs.size === 0) return false;
+            return mobs.has(d.name.toLowerCase());
         };
     }
 
@@ -36,25 +36,44 @@ MBot.route = (() => {
         }));
     }
 
-    function _tryGateway() {
+    function _saveState() {
+        MBot.storage.setMany({
+            routeSteps: _steps.map(s => ({ mobs: [...s.mobs], gateway: s.gateway })),
+            routeCurrentStep: _currentStep
+        });
+    }
+
+    function _tryGateway(gatewayKey) {
+        if (!gatewayKey) return;
         const gateways = [...document.querySelectorAll('.gw')];
-        const target = _selectedGateway
-            ? gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === _selectedGateway)
-            : gateways[0];
-        if (!target) return;
-        console.log('[BOT Route] Przechodzę przez bramę:', _selectedGateway || '(pierwsza)');
+        const target = gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === gatewayKey);
+        if (!target) {
+            console.warn('[BOT Route] Nie znaleziono bramy:', gatewayKey);
+            return;
+        }
+        const nextStep = (_currentStep + 1) % _steps.length;
+        // Save next step BEFORE click — in case gateway causes full page reload
+        MBot.storage.set('routeCurrentStep', nextStep);
+        console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
-        setTimeout(() => { MBot.bot.transitioning = false; }, 4000);
+        setTimeout(() => {
+            _currentStep = nextStep;
+            MBot.bot.transitioning = false;
+        }, 4000);
     }
 
     function tick() {
         if (MBot.bot.transitioning) return;
-        const conditionFn = MBot.adapter.isNI ? _buildConditionNI() : _buildConditionSI();
+        const step = _steps[_currentStep];
+        if (!step) return;
+
+        const conditionFn = MBot.adapter.isNI
+            ? _buildConditionNI(step.mobs)
+            : _buildConditionSI(step.mobs);
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        // Nie liczymy ticków zaraz po walce — dajemy 8s na zakończenie bitwy
         const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
         if (attacked || inOrJustAfterBattle) {
             MBot.bot.noMobsTicks = 0;
@@ -62,7 +81,7 @@ MBot.route = (() => {
             MBot.bot.noMobsTicks++;
             if (MBot.bot.noMobsTicks >= NO_MOBS_THRESHOLD) {
                 MBot.bot.noMobsTicks = 0;
-                _tryGateway();
+                _tryGateway(step.gateway);
             }
         }
     }
@@ -88,19 +107,52 @@ MBot.route = (() => {
             }));
         },
 
-        setSelectedMobs(names) {
-            _selectedMobs = new Set(names.map(n => n.toLowerCase()));
+        addStep(names, gateway) {
+            _steps.push({
+                mobs: new Set(names.map(n => n.toLowerCase())),
+                gateway: gateway || null
+            });
+            _saveState();
         },
 
-        setSelectedGateway(key) {
-            _selectedGateway = key || null;
+        removeStep(index) {
+            _steps.splice(index, 1);
+            if (_currentStep >= _steps.length && _steps.length > 0) _currentStep = _steps.length - 1;
+            if (_steps.length === 0) _currentStep = 0;
+            _saveState();
+        },
+
+        clearSteps() {
+            _steps = [];
+            _currentStep = 0;
+            _saveState();
+        },
+
+        getSteps() {
+            return _steps.map((s, i) => ({
+                index: i,
+                mobs: [...s.mobs],
+                gateway: s.gateway,
+                active: i === _currentStep && MBot.bot.mode === 'route'
+            }));
+        },
+
+        loadFromStorage() {
+            const saved = MBot.storage.get('routeSteps') || [];
+            const savedStep = MBot.storage.get('routeCurrentStep') || 0;
+            _steps = saved.map(s => ({
+                mobs: new Set((s.mobs || []).map(n => n.toLowerCase())),
+                gateway: s.gateway || null
+            }));
+            _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
         },
 
         start() {
-            if (_selectedMobs.size === 0) {
-                console.warn('[BOT Route] Nie wybrano mobów — skanuj i zaznacz najpierw');
+            if (_steps.length === 0) {
+                console.warn('[BOT Route] Brak etapów — dodaj etapy najpierw');
                 return;
             }
+            _saveState();
             MBot.bot.start('route', tick);
         }
     };

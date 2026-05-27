@@ -11,7 +11,9 @@ MBot.storage = (() => {
         healItemId: null,
         botMode: null,
         gatewayEnabled: false,
-        gatewayDest: ""
+        gatewayDest: "",
+        routeSteps: [],
+        routeCurrentStep: 0
     };
 
     function load() {
