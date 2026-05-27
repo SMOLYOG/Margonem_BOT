@@ -67,8 +67,8 @@
     document.getElementById('add-route-step').addEventListener('click', () => {
         const checked = [...document.querySelectorAll('#route-mob-list input[type=checkbox]:checked')]
             .map(cb => cb.value);
-        if (checked.length === 0) return;
         const gw = document.getElementById('route-gateway-select').value;
+        if (checked.length === 0 && !gw) return; // musi być przynajmniej brama jeśli nie ma mobów
         MBot.route.addStep(checked, gw);
         MBot.ui.renderRouteSteps(MBot.route.getSteps());
         // Wyczyść builder po dodaniu

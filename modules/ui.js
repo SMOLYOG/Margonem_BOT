@@ -420,7 +420,7 @@ MBot.ui = (() => {
                 div.className = 'route-step' + (s.active ? ' active-step' : '');
                 const label = document.createElement('span');
                 label.className = 'route-step-label';
-                const mobStr = s.mobs.join(', ') || '(brak mobów)';
+                const mobStr = s.mobs.length > 0 ? s.mobs.join(', ') : '⚡ przejście';
                 const gwStr  = s.gateway || '(zostań)';
                 label.textContent = `#${s.index + 1}  ${mobStr}  →  ${gwStr}`;
                 label.title = label.textContent;

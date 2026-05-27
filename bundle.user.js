@@ -634,7 +634,7 @@ MBot.ui = (() => {
                 div.className = 'route-step' + (s.active ? ' active-step' : '');
                 const label = document.createElement('span');
                 label.className = 'route-step-label';
-                const mobStr = s.mobs.join(', ') || '(brak mobów)';
+                const mobStr = s.mobs.length > 0 ? s.mobs.join(', ') : '⚡ przejście';
                 const gwStr  = s.gateway || '(zostań)';
                 label.textContent = `#${s.index + 1}  ${mobStr}  →  ${gwStr}`;
                 label.title = label.textContent;
@@ -1119,6 +1119,13 @@ MBot.route = (() => {
         const step = _steps[_currentStep];
         if (!step) return;
 
+        // Etap przejścia: brak mobów → od razu idź przez bramę
+        if (step.mobs.size === 0) {
+            MBot.heal.autoHeal();
+            _tryGateway(step.gateway);
+            return;
+        }
+
         const conditionFn = MBot.adapter.isNI
             ? _buildConditionNI(step.mobs)
             : _buildConditionSI(step.mobs);
@@ -1385,8 +1392,8 @@ MBot.captcha = (() => {
     document.getElementById('add-route-step').addEventListener('click', () => {
         const checked = [...document.querySelectorAll('#route-mob-list input[type=checkbox]:checked')]
             .map(cb => cb.value);
-        if (checked.length === 0) return;
         const gw = document.getElementById('route-gateway-select').value;
+        if (checked.length === 0 && !gw) return; // musi być przynajmniej brama jeśli nie ma mobów
         MBot.route.addStep(checked, gw);
         MBot.ui.renderRouteSteps(MBot.route.getSteps());
         // Wyczyść builder po dodaniu

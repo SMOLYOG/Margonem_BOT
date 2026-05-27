@@ -68,6 +68,13 @@ MBot.route = (() => {
         const step = _steps[_currentStep];
         if (!step) return;
 
+        // Etap przejścia: brak mobów → od razu idź przez bramę
+        if (step.mobs.size === 0) {
+            MBot.heal.autoHeal();
+            _tryGateway(step.gateway);
+            return;
+        }
+
         const conditionFn = MBot.adapter.isNI
             ? _buildConditionNI(step.mobs)
             : _buildConditionSI(step.mobs);
