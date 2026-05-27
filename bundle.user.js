@@ -976,7 +976,8 @@ MBot.farm = (() => {
         MBot.heal.autoHeal();
 
         if (!MBot.adapter.isNI) {
-            if (attacked || MBot.combat.isInBattle()) {
+            const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
+            if (attacked || inOrJustAfterBattle) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;
@@ -1060,8 +1061,9 @@ MBot.route = (() => {
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        // Nie liczymy "braku ataku" podczas walki — walka jest w toku
-        if (attacked || MBot.combat.isInBattle()) {
+        // Nie liczymy ticków zaraz po walce — dajemy 8s na zakończenie bitwy
+        const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
+        if (attacked || inOrJustAfterBattle) {
             MBot.bot.noMobsTicks = 0;
         } else {
             MBot.bot.noMobsTicks++;

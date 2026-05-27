@@ -68,7 +68,8 @@ MBot.farm = (() => {
         MBot.heal.autoHeal();
 
         if (!MBot.adapter.isNI) {
-            if (attacked || MBot.combat.isInBattle()) {
+            const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
+            if (attacked || inOrJustAfterBattle) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;
