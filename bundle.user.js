@@ -1125,10 +1125,12 @@ MBot.captcha = (() => {
         const r = el.getBoundingClientRect();
         const x = r.left + r.width  / 2;
         const y = r.top  + r.height / 2;
-        const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-        el.dispatchEvent(new MouseEvent('mousedown', opts));
-        el.dispatchEvent(new MouseEvent('mouseup',   opts));
-        el.dispatchEvent(new MouseEvent('click',     opts));
+        const base = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+        try { el.dispatchEvent(new PointerEvent('pointerdown', { ...base, pointerId: 1, isPrimary: true })); } catch(e) {}
+        try { el.dispatchEvent(new PointerEvent('pointerup',   { ...base, pointerId: 1, isPrimary: true })); } catch(e) {}
+        el.dispatchEvent(new MouseEvent('mousedown', base));
+        el.dispatchEvent(new MouseEvent('mouseup',   base));
+        el.dispatchEvent(new MouseEvent('click',     base));
     }
 
     function _isAsterisk(btn) {
@@ -1138,27 +1140,25 @@ MBot.captcha = (() => {
         return name.startsWith('*') && name.endsWith('*');
     }
 
-    function _clickableOf(el) {
-        const btn = el.closest('.btn') || el.closest('button') || el.parentElement;
-        return (btn && btn.querySelector('.label')) ? btn.querySelector('.label') : btn || el;
-    }
-
     async function _solveCaptcha() {
         if (_solving) return;
         _solving = true;
         _log('Rozwiązuję CAPTCHA...');
         try {
             const container = document.querySelector('.captcha__buttons');
-            if (!container) { _log('Brak .captcha__buttons'); return; }
+            if (!container) { _log('Brak .captcha__buttons'); _solving = false; return; }
 
             const buttons = container.querySelectorAll('.btn.btn-wood');
             _log(`${buttons.length} przycisków, klikam gwiazdki...`);
 
             for (const btn of buttons) {
                 if (_isAsterisk(btn)) {
-                    const label = btn.querySelector('.label') || btn;
-                    _dispatchClick(label);
-                    _log('* klik: ' + btn.querySelector('span.gfont')?.getAttribute('name'));
+                    const span = btn.querySelector('span.gfont');
+                    _log('* klik: ' + span?.getAttribute('name'));
+                    // Try clicking the span.gfont directly, then the btn container
+                    if (span) _dispatchClick(span);
+                    await _delay(50);
+                    _dispatchClick(btn);
                     await _delay(200);
                 }
             }
@@ -1169,8 +1169,11 @@ MBot.captcha = (() => {
                 s => s.getAttribute('name') === 'Potwierdzam'
             );
             if (confirmSpan) {
-                _dispatchClick(_clickableOf(confirmSpan));
-                _log('Kliknięto "Potwierdzam"');
+                _log('Klikam "Potwierdzam"');
+                _dispatchClick(confirmSpan);
+                await _delay(50);
+                const parentBtn = confirmSpan.closest('.btn') || confirmSpan.closest('button') || confirmSpan.parentElement;
+                if (parentBtn) _dispatchClick(parentBtn);
             } else {
                 _log('Nie znaleziono "Potwierdzam"');
             }
@@ -1185,7 +1188,9 @@ MBot.captcha = (() => {
     async function _handleSolveNow(span) {
         _solving = true;
         _log('Klikam "Rozwiąż teraz"...');
-        _dispatchClick(_clickableOf(span));
+        _dispatchClick(span);
+        const parentBtn = span.closest('.btn') || span.closest('button') || span.parentElement;
+        if (parentBtn) { await _delay(50); _dispatchClick(parentBtn); }
         for (let i = 0; i < 20; i++) {
             await _delay(250);
             if (document.querySelector('.captcha__buttons')) {
