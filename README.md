@@ -105,7 +105,6 @@ modules/                  ← development source
 
 - **Auto-CAPTCHA** — in development, not available in this release
 - Bot requires the game tab to be active (browser cannot be minimized)
-- NI (new interface): Farm and Heal work; Route is in testing
 
 ---
 
