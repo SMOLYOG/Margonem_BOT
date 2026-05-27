@@ -14,6 +14,20 @@ MBot.captcha = (() => {
 
     function _letter(name) { return name.slice(1, -1); }
 
+    // Przechwytuje _g żeby zobaczyć co gra wysyła do serwera
+    function _interceptG(callback) {
+        const orig = window._g;
+        window._g = function(...args) {
+            const url = String(args[0] || '');
+            if (/captcha/i.test(url)) {
+                _log('>>> _g URL: ' + url.slice(0, 500));
+                callback(url);
+            }
+            return orig?.apply(this, args);
+        };
+        return () => { window._g = orig; };
+    }
+
     async function _solveCaptcha() {
         if (_solving) return;
         _solving = true;
@@ -34,39 +48,34 @@ MBot.captcha = (() => {
                 return;
             }
 
-            const waiter = new window.CaptchaAnswerWaiter();
+            // Zaloguj co gra wysyła do serwera (diagnostyka formatu)
+            let capturedUrl = null;
+            const restore = _interceptG(url => { capturedUrl = url; });
 
-            // setCaptchaAnswer: function(n){t=n} — jedno wywołanie z całą tablicą
-            // Próbujemy kolejno: tablica liter, tablica pełnych nazw, string przecinkowy
-            const formats = [
-                { label: 'tablica liter',       val: letters },
-                { label: 'tablica nazw (*x*)',   val: names },
-                { label: 'string liter (,)',      val: letters.join(',') },
-                { label: 'string nazw (,)',       val: names.join(',') },
-                { label: 'string liter bez sep',  val: letters.join('') },
-            ];
+            try {
+                const waiter = new window.CaptchaAnswerWaiter();
 
-            for (const fmt of formats) {
-                _log(`Próba [${fmt.label}]: setCaptchaAnswer(${JSON.stringify(fmt.val)})`);
-                waiter.setCaptchaAnswer(fmt.val);
-                await _delay(200);
+                // Próba 1: tablica liter ['a','b','d']
+                _log('Próba: setCaptchaAnswer(' + JSON.stringify(letters) + ')');
+                waiter.setCaptchaAnswer(letters);
+                await _delay(100);
                 waiter.startSendToServerWaitToCaptcha();
-                _log('  → wysłano, czekam 3s na reakcję gry...');
-                await _delay(3000);
+                await _delay(500);
+                _log('Przechwycony URL: ' + (capturedUrl || 'brak — _g nie wywołany'));
 
-                // Sprawdź czy captcha zniknęła
-                if (!document.querySelector('.captcha__buttons') ||
-                    document.querySelector('.captcha__buttons')?.offsetParent === null) {
-                    _log('✓ Captcha rozwiązana! Format: ' + fmt.label);
-                    _solving = false;
-                    return;
-                }
-                _log('  Captcha nadal otwarta — próbuję następny format');
-                // Stwórz nową instancję dla kolejnej próby (stara może być "zużyta")
-                try { Object.assign(waiter, new window.CaptchaAnswerWaiter()); } catch(e) {}
+            } finally {
+                restore();
             }
 
-            _log('Wszystkie formaty nieudane — captcha może wymagać innej metody');
+            // Czekaj na zamknięcie captchy
+            await _delay(4000);
+            if (!document.querySelector('.captcha__buttons') ||
+                document.querySelector('.captcha__buttons')?.offsetParent === null) {
+                _log('✓ Captcha rozwiązana!');
+            } else {
+                _log('Captcha nadal otwarta. Sprawdź URL w logu powyżej.');
+            }
+
         } catch (err) {
             _log('Błąd: ' + err.message);
         }
