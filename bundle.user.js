@@ -1249,20 +1249,6 @@ MBot.captcha = (() => {
 
     function _letter(name) { return name.slice(1, -1); }
 
-    function _findExistingInstance() {
-        // Szukaj istniejącej instancji CaptchaAnswerWaiter w globalach
-        for (const key of Object.keys(window)) {
-            try {
-                const val = window[key];
-                if (val && typeof val === 'object' && typeof val.setCaptchaAnswer === 'function') {
-                    _log('Instancja CaptchaAnswerWaiter znaleziona: window.' + key);
-                    return val;
-                }
-            } catch(e) {}
-        }
-        return null;
-    }
-
     async function _solveCaptcha() {
         if (_solving) return;
         _solving = true;
@@ -1275,130 +1261,51 @@ MBot.captcha = (() => {
             const asterisks = [...buttons].filter(_isAsterisk);
             const names     = asterisks.map(b => b.querySelector('span.gfont').getAttribute('name'));
             const letters   = names.map(_letter);
-            _log(`Gwiazdki: ${names.join(', ')}`);
+            _log(`Gwiazdki: ${names.join(', ')} → litery: ${letters.join(', ')}`);
 
-            // ── 1. Szukaj istniejącej instancji w globalach ───────────────
-            let waiter = _findExistingInstance();
-
-            // ── 2. Jeśli nie ma — stwórz nową ────────────────────────────
-            if (!waiter && typeof window.CaptchaAnswerWaiter === 'function') {
-                try {
-                    waiter = new window.CaptchaAnswerWaiter();
-                    _log('Nowa instancja: ' + Object.keys(waiter).join(', '));
-                } catch(e) { _log('new CaptchaAnswerWaiter error: ' + e.message); }
+            if (typeof window.CaptchaAnswerWaiter !== 'function') {
+                _log('Brak CaptchaAnswerWaiter!');
+                _solving = false;
+                return;
             }
 
-            if (waiter) {
-                // Zaloguj source kluczowych metod
-                _log('setCaptchaAnswer:\n' + waiter.setCaptchaAnswer?.toString().slice(0, 400));
-                _log('startSend:\n'        + waiter.startSendToServerWaitToCaptcha?.toString().slice(0, 400));
-                _log('init:\n'             + waiter.init?.toString().slice(0, 200));
+            const waiter = new window.CaptchaAnswerWaiter();
 
-                try { if (waiter.init) waiter.init(); } catch(e) { _log('init err: ' + e.message); }
+            // setCaptchaAnswer: function(n){t=n} — jedno wywołanie z całą tablicą
+            // Próbujemy kolejno: tablica liter, tablica pełnych nazw, string przecinkowy
+            const formats = [
+                { label: 'tablica liter',       val: letters },
+                { label: 'tablica nazw (*x*)',   val: names },
+                { label: 'string liter (,)',      val: letters.join(',') },
+                { label: 'string nazw (,)',       val: names.join(',') },
+                { label: 'string liter bez sep',  val: letters.join('') },
+            ];
 
-                // Próba A: setCaptchaAnswer raz per kafelek (litera bez gwiazdek)
-                _log('--- Próba A: po jednej literze ---');
-                let ok = false;
-                try {
-                    for (const letter of letters) {
-                        _log('  setCaptchaAnswer(' + letter + ')');
-                        waiter.setCaptchaAnswer(letter);
-                        await _delay(150);
-                    }
-                    await _delay(300);
-                    _log('  startSendToServerWaitToCaptcha()');
-                    waiter.startSendToServerWaitToCaptcha();
-                    _log('✓ Próba A wysłana');
-                    ok = true;
-                } catch(e) { _log('Próba A błąd: ' + e.message); }
+            for (const fmt of formats) {
+                _log(`Próba [${fmt.label}]: setCaptchaAnswer(${JSON.stringify(fmt.val)})`);
+                waiter.setCaptchaAnswer(fmt.val);
+                await _delay(200);
+                waiter.startSendToServerWaitToCaptcha();
+                _log('  → wysłano, czekam 3s na reakcję gry...');
+                await _delay(3000);
 
-                if (!ok) {
-                    // Próba B: setCaptchaAnswer raz per kafelek (pełna nazwa *x*)
-                    _log('--- Próba B: po jednej pełnej nazwie ---');
-                    try {
-                        for (const name of names) {
-                            _log('  setCaptchaAnswer(' + name + ')');
-                            waiter.setCaptchaAnswer(name);
-                            await _delay(150);
-                        }
-                        await _delay(300);
-                        waiter.startSendToServerWaitToCaptcha();
-                        _log('✓ Próba B wysłana');
-                        ok = true;
-                    } catch(e) { _log('Próba B błąd: ' + e.message); }
-                }
-
-                if (!ok) {
-                    // Próba C: setCaptchaAnswer z tablicą liter
-                    _log('--- Próba C: tablica liter ---');
-                    try {
-                        waiter.setCaptchaAnswer(letters);
-                        await _delay(300);
-                        waiter.startSendToServerWaitToCaptcha();
-                        _log('✓ Próba C wysłana');
-                        ok = true;
-                    } catch(e) { _log('Próba C błąd: ' + e.message); }
-                }
-
-                if (!ok) {
-                    // Próba D: setCaptchaAnswer z elementem DOM przycisku
-                    _log('--- Próba D: z elementem DOM ---');
-                    try {
-                        for (let i = 0; i < asterisks.length; i++) {
-                            waiter.setCaptchaAnswer(letters[i], asterisks[i]);
-                            await _delay(150);
-                        }
-                        await _delay(300);
-                        waiter.startSendToServerWaitToCaptcha();
-                        _log('✓ Próba D wysłana');
-                        ok = true;
-                    } catch(e) { _log('Próba D błąd: ' + e.message); }
-                }
-
-                if (ok) {
-                    await _delay(5000);
+                // Sprawdź czy captcha zniknęła
+                if (!document.querySelector('.captcha__buttons') ||
+                    document.querySelector('.captcha__buttons')?.offsetParent === null) {
+                    _log('✓ Captcha rozwiązana! Format: ' + fmt.label);
                     _solving = false;
                     return;
                 }
+                _log('  Captcha nadal otwarta — próbuję następny format');
+                // Stwórz nową instancję dla kolejnej próby (stara może być "zużyta")
+                try { Object.assign(waiter, new window.CaptchaAnswerWaiter()); } catch(e) {}
             }
 
-            // ── Fallback: sprawdź klasy CSS przycisków po kliknięciu ──────
-            _log('=== Fallback DOM ===');
-            // Sprawdź jakie klasy mają przyciski przed kliknięciem
-            const firstBtn = buttons[0];
-            _log('btn classes przed: ' + firstBtn?.className);
-
-            for (const btn of asterisks) {
-                const label = btn.querySelector('.label') || btn;
-                const r = label.getBoundingClientRect();
-                const opts = { bubbles: true, cancelable: true, view: window,
-                    clientX: r.left + r.width/2, clientY: r.top + r.height/2 };
-                if (window.jQuery) try { window.jQuery(label).trigger('click'); } catch(e) {}
-                try { label.click(); } catch(e) {}
-                label.dispatchEvent(new MouseEvent('click', opts));
-                btn.dispatchEvent(new MouseEvent('click', opts));
-                await _delay(100);
-            }
-
-            _log('btn classes po: ' + firstBtn?.className);
-
-            await _delay(400);
-            const confirmBtn = document.querySelector('.captcha__confirm .btn.btn-wood');
-            if (confirmBtn) {
-                _log('Klikam "Potwierdzam"');
-                const lbl = confirmBtn.querySelector('.label') || confirmBtn;
-                if (window.jQuery) try { window.jQuery(lbl).trigger('click'); } catch(e) {}
-                try { lbl.click(); } catch(e) {}
-                const r = lbl.getBoundingClientRect();
-                lbl.dispatchEvent(new MouseEvent('click', {
-                    bubbles: true, cancelable: true, view: window,
-                    clientX: r.left + r.width/2, clientY: r.top + r.height/2
-                }));
-            }
+            _log('Wszystkie formaty nieudane — captcha może wymagać innej metody');
         } catch (err) {
-            _log('Błąd główny: ' + err.message);
+            _log('Błąd: ' + err.message);
         }
-        await _delay(5000);
+        await _delay(2000);
         _solving = false;
     }
 
@@ -1411,7 +1318,7 @@ MBot.captcha = (() => {
         const r = el.getBoundingClientRect();
         el.dispatchEvent(new MouseEvent('click', {
             bubbles: true, cancelable: true, view: window,
-            clientX: r.left + r.width/2, clientY: r.top + r.height/2
+            clientX: r.left + r.width / 2, clientY: r.top + r.height / 2
         }));
         for (let i = 0; i < 30; i++) {
             await _delay(250);
