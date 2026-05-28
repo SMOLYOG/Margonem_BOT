@@ -113,6 +113,7 @@ MBot.combat = (() => {
 
             if (nearest) {
                 MBot.bot.inBattle = true;
+                MBot.bot.lastAttackTime = Date.now();
                 window._g(`fight&a=attack&id=${nearest.d.id}`);
             }
         } catch (err) {

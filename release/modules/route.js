@@ -130,7 +130,7 @@ MBot.route = (() => {
         MBot.heal.autoHeal();
 
         // Resetuj licznik jeśli: atak, walka w toku (DOM/NI), lub niedawny atak
-        if (attacked || MBot.combat.isInBattle() || Date.now() - MBot.bot.lastAttackTime < 8000) {
+        if (attacked || MBot.bot.inBattle || Date.now() - MBot.bot.lastAttackTime < 8000) {
             MBot.bot.noMobsTicks = 0;
         } else {
             MBot.bot.noMobsTicks++;

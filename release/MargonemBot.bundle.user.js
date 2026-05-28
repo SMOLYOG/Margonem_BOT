@@ -739,7 +739,7 @@
                     const d = Math.hypot(hx - o.d.x, hy - o.d.y);
                     if (d < minDist) { minDist = d; nearest = o; }
                 });
-                if (nearest) { MBot.bot.inBattle = true; window._g(`fight&a=attack&id=${nearest.d.id}`); }
+                if (nearest) { MBot.bot.inBattle = true; MBot.bot.lastAttackTime = Date.now(); window._g(`fight&a=attack&id=${nearest.d.id}`); }
             } catch (err) { console.warn('[BOT NI] attackNearest error:', err); }
         }
 
@@ -991,7 +991,7 @@
             const conditionFn = MBot.adapter.isNI ? _buildConditionNI(step.mobs) : _buildConditionSI(step.mobs);
             const attacked = MBot.combat.attackNearest(conditionFn);
             MBot.heal.autoHeal();
-            if (attacked || MBot.combat.isInBattle() || Date.now() - MBot.bot.lastAttackTime < 8000) {
+            if (attacked || MBot.bot.inBattle || Date.now() - MBot.bot.lastAttackTime < 8000) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;
