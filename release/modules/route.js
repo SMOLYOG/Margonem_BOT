@@ -62,7 +62,11 @@ MBot.route = (() => {
 
         // Zapisz następny etap PRZED klikiem — na wypadek pełnego przeładowania strony
         MBot.storage.set('routeCurrentStep', nextStep);
-        console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+        if (nextStep === 0) {
+            console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
+        } else {
+            console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+        }
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
 
@@ -73,7 +77,10 @@ MBot.route = (() => {
                 console.warn('[BOT Route] Mapa nie zmieniła się — cofam etap, ponawiam');
                 MBot.storage.set('routeCurrentStep', _currentStep);
             } else {
+                // Mapa zmieniła się przez AJAX (bez przeładowania strony)
                 _currentStep = nextStep;
+                MBot.storage.set('routeCurrentStep', _currentStep);
+                MBot.ui.renderRouteSteps(MBot.route.getSteps());
             }
             MBot.bot.transitioning = false;
         }, 4000);

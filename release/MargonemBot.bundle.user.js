@@ -937,7 +937,11 @@
             const nextStep = (_currentStep + 1) % _steps.length;
             const fpBefore = _mapFingerprint();
             MBot.storage.set('routeCurrentStep', nextStep);
-            console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+            if (nextStep === 0) {
+                console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
+            } else {
+                console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+            }
             MBot.bot.transitioning = true;
             try { _clickEl(target); } catch(e) {}
             setTimeout(() => {
@@ -947,6 +951,8 @@
                     MBot.storage.set('routeCurrentStep', _currentStep);
                 } else {
                     _currentStep = nextStep;
+                    MBot.storage.set('routeCurrentStep', _currentStep);
+                    MBot.ui.renderRouteSteps(MBot.route.getSteps());
                 }
                 MBot.bot.transitioning = false;
             }, 4000);
