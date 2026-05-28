@@ -309,9 +309,9 @@ MBot.ui = (() => {
                 <div id="mbot-panel-captcha" class="mbot-panel">
                     <button class="mbot-btn-start active" id="captcha-toggle" data-active="1">■ Wyłącz auto-CAPTCHA</button>
                     <div class="captcha-info">
-                        Auto-wykrywanie CAPTCHA w DOM.<br>
-                        Kliknie "Rozwiąż teraz", zaznaczy<br>
-                        gwiazdki <b>*x*</b> i potwierdzi.
+                        Wymaga: <b>captcha_clicker.py</b> na localhost:8765.<br>
+                        Auto-kliknie "Rozwiąż teraz", wykryje<br>
+                        odpowiedni symbol i potwierdzi.
                     </div>
                 </div>
 

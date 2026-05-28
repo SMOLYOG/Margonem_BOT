@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Margonem Bot
 // @namespace    https://github.com/SMOLYOG/Margonem_BOT
-// @version      1.0.0
-// @description  Auto farm | Wieloetapowy Route | Auto Heal | SI + NI
+// @version      1.1.0
+// @description  Auto farm | Wieloetapowy Route | Auto Heal | Auto CAPTCHA | SI + NI
 // @author       SMOLYOG
 // @match        https://*.margonem.pl/*
 // @grant        none
@@ -25,21 +25,12 @@
     if (document.getElementById('mbot-root')) return;
     window.MBot = window.MBot || {};
 
-    // Auto-CAPTCHA — wkrótce (stub)
-    MBot.captcha = { start() {}, stop() {} };
-
     // ── Buduj UI ──────────────────────────────────────────────────────────
     MBot.ui.build();
 
     if (MBot.adapter.isNI) {
         document.getElementById('mbot-header-title').textContent = '⚔️ Margonem Bot [NI]';
     }
-
-    // Ukryj zakładkę CAPTCHA (niedostępna w tej wersji)
-    const captchaTab   = document.querySelector('.mbot-tab[data-tab="captcha"]');
-    const captchaPanel = document.getElementById('mbot-panel-captcha');
-    if (captchaTab)   captchaTab.style.display   = 'none';
-    if (captchaPanel) captchaPanel.style.display  = 'none';
 
     // ── Przywróć ustawienia ───────────────────────────────────────────────
     const mobMin  = MBot.storage.get('mobMinLevel');
@@ -108,6 +99,27 @@
         notice.style.display = 'block';
         setTimeout(() => { notice.style.display = 'none'; }, 2000);
     });
+
+    // ── CAPTCHA ───────────────────────────────────────────────────────────
+    const captchaToggle = document.getElementById('captcha-toggle');
+    let captchaActive = !!MBot.storage.get('captchaEnabled');
+
+    function _setCaptchaState(active) {
+        captchaActive = active;
+        MBot.storage.set('captchaEnabled', active ? 1 : 0);
+        if (active) {
+            MBot.captcha.start();
+            captchaToggle.textContent = '■ Wyłącz auto-CAPTCHA';
+            captchaToggle.classList.add('active');
+        } else {
+            MBot.captcha.stop();
+            captchaToggle.textContent = '▶ Włącz auto-CAPTCHA';
+            captchaToggle.classList.remove('active');
+        }
+    }
+
+    captchaToggle.addEventListener('click', () => _setCaptchaState(!captchaActive));
+    _setCaptchaState(captchaActive);
 
     // ── Auto-restart po przeładowaniu strony ──────────────────────────────
     const savedMode = MBot.storage.get('botMode');
