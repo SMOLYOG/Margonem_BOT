@@ -29,10 +29,12 @@ MBot.captcha = (() => {
         return n.length >= 3 && n.startsWith(sym) && n.endsWith(sym);
     }
 
-    // Center point of an element in screen (viewport) coordinates.
+    // Center point of an element in absolute screen coordinates (for pyautogui).
     function _center(el) {
-        const r = el.getBoundingClientRect();
-        return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        const r  = el.getBoundingClientRect();
+        const ox = window.screenX + Math.round((window.outerWidth  - window.innerWidth)  / 2);
+        const oy = window.screenY +            (window.outerHeight - window.innerHeight);
+        return { x: Math.round(r.left + r.width / 2) + ox, y: Math.round(r.top + r.height / 2) + oy };
     }
 
     async function _solveCaptcha() {
