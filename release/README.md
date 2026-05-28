@@ -1,96 +1,100 @@
-# Margonem Bot
+<div align="center">
 
-Bot do gry Margonem.pl — automatyczne farmienie, wieloetapowy route i auto heal.  
-Działa zarówno ze **starym interfejsem (SI)** jak i **nowym interfejsem (NI)**.
+# ⚔️ Margonem Bot
 
----
+**Automatyczne farmienie · Wieloetapowy Route · Auto Heal · Auto CAPTCHA**
 
-## Instalacja
+![version](https://img.shields.io/badge/wersja-1.1.0-blue)
+![platform](https://img.shields.io/badge/SI%20%7C%20NI-supported-green)
 
-1. Zainstaluj rozszerzenie **Tampermonkey** ([Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/pl/firefox/addon/tampermonkey/))
-2. Otwórz plik `MargonemBot.user.js` z tego folderu
-3. Kliknij **Zainstaluj skrypt** w Tampermonkey
-4. Wejdź na Margonem.pl — panel bota pojawi się w prawym górnym rogu
-
-> Skrypt automatycznie pobiera moduły z GitHub przy każdym uruchomieniu.  
-> Aktualizacje modułów działają od razu bez reinstalacji skryptu.
+</div>
 
 ---
 
-## Funkcje
+## Szybka instalacja
 
-| Tryb | Opis |
-|------|------|
-| **Farm** | Atakuje moby według filtrów (poziom, nazwa). Opcjonalnie przechodzi przez bramę gdy mapa jest czysta. |
-| **Route** | Wieloetapowy łańcuszek — każdy etap ma własne moby i bramę do przejścia. Automatycznie wznawia po przeładowaniu strony. |
-| **Heal** | Automatyczne leczenie itemem z ekwipunku gdy HP spada poniżej progu. |
+1. Zainstaluj **Tampermonkey** → [Chrome](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/pl/firefox/addon/tampermonkey/)
+2. Utwórz nowy skrypt w Tampermonkey
+3. Wklej zawartość `MargonemBot.bundle.user.js` i zapisz
+4. Wejdź na **margonem.pl** — panel pojawi się w prawym górnym rogu
 
----
-
-## Tryb Farm
-
-1. Przejdź na zakładkę **Farm**
-2. Opcjonalnie ustaw filtry: min/max poziom, nazwa moba
-3. Opcjonalnie włącz **Auto-brama** i wpisz część nazwy bramy docelowej
-4. Kliknij **▶ Start**
+> Alternatywnie: użyj `MargonemBot.user.js` który ładuje moduły z GitHub przez `@require` (auto-aktualizacje).
 
 ---
 
-## Tryb Route (Expowisko)
+## Auto-CAPTCHA — wymagania
 
-Pozwala zdefiniować łańcuszek map — bot bije moby na każdej mapie, przechodzi przez bramę i przechodzi do kolejnego etapu w kółko.
-
-### Jak ustawić route:
-
-1. Wejdź na pierwszą mapę, przejdź na zakładkę **Route**
-2. Kliknij **Skanuj moby** → zaznacz checkboxami moby do bicia
-3. Kliknij **Skanuj bramy** → wybierz bramę przez którą wyjść
-4. Kliknij **+ Dodaj etap**
-5. Przejdź ręcznie na drugą mapę i powtórz kroki 2–4
-6. Po dodaniu wszystkich etapów kliknij **▶ Start**
-
-### Etap przejścia (bez walki):
-
-Jeśli chcesz tylko przejść przez mapę bez bicia mobów:
-- Nie zaznaczaj żadnych mobów
-- Wybierz tylko bramę
-- Kliknij **+ Dodaj etap** — pojawi się jako `⚡ przejście`
-
-### Przykładowy route:
-
-```
-#1  Żuk, Kruk       →  Jaskinia Rozpaczy    (bije moby, potem brama)
-#2  ⚡ przejście    →  Równina Wschodnia    (tylko przechodzi)
-#3  Bandyta, Rycerz →  Powrót do Miasta     (bije moby, potem brama)
+```bash
+pip install flask pyautogui
+python captcha_clicker.py
 ```
 
-Bot wraca do etapu #1 i powtarza pętlę w nieskończoność.
-
-### Auto-restart po bramie:
-
-Po przejściu przez bramę strona się przeładowuje — bot **automatycznie wznawia** od właściwego etapu bez konieczności ręcznego klikania Start.
+Uruchom przed wejściem do gry. Serwer nasłuchuje na `localhost:8765`.
 
 ---
 
-## Tryb Heal
+## 🤺 Farm
 
-1. Przejdź na zakładkę **Heal**
-2. Kliknij na slot z itemem leczącym w ekwipunku
-3. Ustaw próg HP (domyślnie 30%)
-4. Kliknij **Zapisz ustawienia**
+| Krok | Akcja |
+|------|-------|
+| 1 | Otwórz zakładkę **Farm** |
+| 2 | Ustaw filtry: min/max poziom, nazwa moba *(opcjonalne)* |
+| 3 | Włącz **Auto-brama** i wpisz część nazwy mapy docelowej *(opcjonalne)* |
+| 4 | Kliknij **▶ Start** |
 
-Heal działa w tle niezależnie od trybu farm/route.
+---
+
+## 🗺️ Route
+
+Definiujesz łańcuszek map. Bot bije moby, przechodzi bramę, przechodzi do następnego etapu — w kółko. Po przeładowaniu strony (brama) **wznawia automatycznie**.
+
+### Konfiguracja
+
+```
+Mapa A → [Skanuj moby] → zaznacz moby → [Skanuj bramy] → wybierz bramę → [+ Dodaj etap]
+Mapa B → powtórz
+Mapa C → powtórz
+         [▶ Start]
+```
+
+### Etap przejścia (bez walki)
+
+Nie zaznaczaj mobów — wybierz tylko bramę. Pojawi się jako `⚡ przejście`.
+
+### Przykład
+
+```
+#1  Żuk, Kruk       →  Jaskinia Rozpaczy
+#2  ⚡ przejście    →  Równina Wschodnia
+#3  Bandyta, Rycerz →  Powrót do Miasta
+↩️  wraca do #1...
+```
+
+---
+
+## 💊 Heal
+
+| Krok | Akcja |
+|------|-------|
+| 1 | Otwórz zakładkę **Heal** |
+| 2 | Kliknij **🔄 Odśwież** → kliknij slot z itemem leczącym |
+| 3 | Ustaw próg HP *(domyślnie 30%)* |
+| 4 | Kliknij **💾 Zapisz ustawienia** |
+
+Heal działa w tle — niezależnie od Farm/Route.
+
+---
+
+## 🔐 CAPTCHA
+
+Bot sam wykrywa okno CAPTCHA, odczytuje który symbol jest wymagany z pytania (`gwiazdka`, `wykrzyknik`, `dolar` itp.), i wysyła koordynaty odpowiednich kafelków do `captcha_clicker.py`, który klika je prawdziwymi zdarzeniami systemowymi.
+
+> Nie minimalizuj okna przeglądarki podczas rozwiązywania CAPTCHA.
 
 ---
 
 ## Znane ograniczenia
 
-- **Auto-CAPTCHA** — w przygotowaniu, niedostępna w tej wersji
-- Bot działa tylko gdy karta z grą jest aktywna (przeglądarka nie może być zminimalizowana)
-- NI (nowy interfejs): farm/heal działa, route w testach
-
----
-
-## Wersja
-
-`1.0.0` — Farm, Route, Heal | Auto-CAPTCHA: wkrótce
+- Karta z grą musi być aktywna (przeglądarka nie może być zminimalizowana)
+- Auto-CAPTCHA wymaga uruchomionego `captcha_clicker.py`
+- NI (nowy interfejs): Farm i Heal działają stabilnie, Route w testach

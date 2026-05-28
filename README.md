@@ -1,113 +1,114 @@
-# Margonem Bot
+<div align="center">
 
-Tampermonkey userscript for [Margonem.pl](https://margonem.pl) — automatic mob farming, multi-step route chains, and auto heal.  
-Supports both **old interface (SI)** and **new interface (NI)**.
+# ⚔️ Margonem Bot
 
----
+**Tampermonkey userscript do automatycznego grania na [Margonem.pl](https://margonem.pl)**
 
-## Quick Install
+![version](https://img.shields.io/badge/wersja-1.1.0-blue)
+![platform](https://img.shields.io/badge/platforma-SI%20%7C%20NI-green)
+![license](https://img.shields.io/badge/licencja-MIT-gray)
 
-1. Install **Tampermonkey** — [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/pl/firefox/addon/tampermonkey/)
-2. Click **Install Script** below and confirm in Tampermonkey:
-
-   > [`release/MargonemBot.user.js`](https://raw.githubusercontent.com/SMOLYOG/Margonem_BOT/main/release/MargonemBot.user.js)
-
-3. Open Margonem.pl — the bot panel appears in the top-right corner.
-
-Modules are loaded automatically from GitHub on every run. Updates apply instantly without reinstalling.
+</div>
 
 ---
 
-## Features
+## Funkcje
 
-| Mode | Description |
-|------|-------------|
-| **Farm** | Attack mobs filtered by level range or name. Optional auto-gateway when the map is clear. |
-| **Route** | Multi-step chain — define mobs + exit gateway per map, bot loops indefinitely. Auto-restarts after page reload. |
-| **Heal** | Use a healing item from inventory automatically when HP drops below a configurable threshold. |
-
----
-
-## Farm
-
-1. Go to the **Farm** tab
-2. Set optional filters: min/max mob level, mob name
-3. Optionally enable **Auto-gateway** and enter part of the gateway name
-4. Click **▶ Start**
+| Moduł | Co robi |
+|-------|---------|
+| 🤺 **Farm** | Atakuje moby według filtrów poziomu i nazwy. Opcjonalnie przechodzi przez bramę gdy mapa jest czysta. |
+| 🗺️ **Route** | Wieloetapowy łańcuszek map — bot bije moby, przechodzi przez bramę i wraca do etapu #1 w pętli. Auto-restart po przeładowaniu strony. |
+| 💊 **Heal** | Używa wybranego itemu leczącego automatycznie gdy HP spada poniżej ustawionego progu. |
+| 🔐 **CAPTCHA** | Auto-rozwiązywanie CAPTCHA przez lokalny skrypt Python (`captcha_clicker.py`). |
 
 ---
 
-## Route
+## Instalacja
 
-Define a chain of maps — the bot kills mobs on each map, crosses the gateway, and continues to the next step in a loop.
+### Opcja A — bundle (jeden plik, bez zależności)
 
-### Setup:
+1. Zainstaluj **Tampermonkey** → [Chrome](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/pl/firefox/addon/tampermonkey/)
+2. Utwórz nowy skrypt w Tampermonkey i wklej zawartość [`release/MargonemBot.bundle.user.js`](release/MargonemBot.bundle.user.js)
+3. Zapisz — panel bota pojawi się w prawym górnym rogu
 
-1. Go to the first map, open the **Route** tab
-2. Click **Skanuj moby** → check the mobs to kill
-3. Click **Skanuj bramy** → pick the exit gateway
-4. Click **+ Dodaj etap**
-5. Manually walk to the next map and repeat steps 2–4
-6. Click **▶ Start**
+### Opcja B — z @require (auto-aktualizacje modułów)
 
-### Passthrough step (no combat):
+1. Zainstaluj Tampermonkey
+2. Utwórz nowy skrypt i wklej zawartość [`release/MargonemBot.user.js`](release/MargonemBot.user.js)
+3. Moduły pobierane są automatycznie z GitHub przy każdym uruchomieniu
 
-Leave mobs unchecked, select only a gateway, and click **+ Dodaj etap** — appears as `⚡ przejście`.
+---
 
-### Example route:
+## Auto-CAPTCHA
+
+Wymaga lokalnego serwera Python do fizycznego klikania myszą.
+
+```bash
+pip install flask pyautogui
+python captcha_clicker.py
+```
+
+Serwer nasłuchuje na `localhost:8765`. Bot automatycznie wykrywa CAPTCHA, identyfikuje właściwy symbol z pytania i wysyła koordynaty do klikalnika.
+
+> **Ważne:** nie minimalizuj okna przeglądarki gdy bot rozwiązuje CAPTCHA — pyautogui klika w realne piksele na ekranie.
+
+---
+
+## Użycie
+
+### Farm
+
+1. Otwórz zakładkę **🤺 Farm**
+2. Ustaw opcjonalnie: min/max poziom, nazwę moba
+3. Włącz **Auto-brama** jeśli chcesz przejść dalej gdy mapa jest czysta
+4. Kliknij **▶ Start**
+
+### Route
+
+1. Wejdź na pierwszą mapę → otwórz zakładkę **🗺️ Route**
+2. **Skanuj moby** → zaznacz checkboxami moby do bicia
+3. **Skanuj bramy** → wybierz bramę wyjściową
+4. **+ Dodaj etap** → przejdź ręcznie na kolejną mapę i powtórz
+5. Po dodaniu wszystkich etapów kliknij **▶ Start**
+
+**Etap przejścia** (bez walki): nie zaznaczaj mobów, wybierz tylko bramę.
 
 ```
 #1  Żuk, Kruk       →  Jaskinia Rozpaczy
 #2  ⚡ przejście    →  Równina Wschodnia
 #3  Bandyta, Rycerz →  Powrót do Miasta
+↩️  powrót do #1 ...
 ```
 
-The bot restarts from step #1 and loops indefinitely.  
-After each gateway the page reloads — the bot **resumes automatically** at the correct step.
+### Heal
+
+1. Otwórz zakładkę **💊 Heal**
+2. Kliknij **🔄 Odśwież** → wybierz slot z itemem leczącym
+3. Ustaw próg HP → **💾 Zapisz ustawienia**
+
+Heal działa w tle niezależnie od trybu farm/route.
 
 ---
 
-## Heal
-
-1. Open the **Heal** tab
-2. Click the healing item slot in the inventory panel
-3. Set the HP threshold (default 30%)
-4. Click **Zapisz ustawienia**
-
-Heal runs in the background regardless of farm/route mode.
-
----
-
-## Project Structure
+## Struktura projektu
 
 ```
 release/
-├── MargonemBot.user.js   ← install this in Tampermonkey
-└── modules/
-    ├── config.js
-    ├── storage.js
-    ├── adapter.js
-    ├── bot.js
-    ├── ui.js
-    ├── inventory.js
-    ├── combat.js
-    ├── heal.js
-    ├── farm.js
-    ├── route.js
-    └── captcha.js
+├── MargonemBot.bundle.user.js   ← wszystko w jednym pliku (zalecane do testów)
+├── MargonemBot.user.js          ← wersja z @require
+└── modules/                     ← moduły ładowane przez @require
+    ├── config.js · storage.js · adapter.js · bot.js
+    ├── ui.js · inventory.js · combat.js · heal.js
+    ├── farm.js · route.js · captcha.js
 
-modules/                  ← development source
+captcha_clicker.py               ← serwer Python do klikania CAPTCHA
+debug_captcha.js                 ← skrypt testowy do F12
 ```
 
 ---
 
-## Known Limitations
+<div align="center">
 
-- **Auto-CAPTCHA** — in development, not available in this release
-- Bot requires the game tab to be active (browser cannot be minimized)
+`v1.1.0` · Farm · Route · Heal · Auto-CAPTCHA · SI + NI
 
----
-
-## Version
-
-`1.0.0` — Farm · Route · Heal | Auto-CAPTCHA: coming soon
+</div>
