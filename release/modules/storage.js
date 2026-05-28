@@ -9,6 +9,7 @@ MBot.storage = (() => {
         heroesInput: "",
         elitesInput: "",
         healItemId: null,
+        healItemName: null,
         botMode: null,
         gatewayEnabled: false,
         gatewayDest: "",

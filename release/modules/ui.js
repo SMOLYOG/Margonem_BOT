@@ -276,6 +276,13 @@ MBot.ui = (() => {
                     </select>
                     <button class="mbot-btn-save" id="add-route-step" style="width:100%;margin-bottom:2px;">+ Dodaj etap</button>
                     <div class="mbot-sep" style="margin:5px 0;"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                        <span style="font-size:10px;color:#666;">Etapy</span>
+                        <div style="display:flex;gap:4px;">
+                            <button class="mbot-btn-save" id="route-step-prev" style="flex:0;padding:2px 8px;font-size:11px;" title="Poprzedni etap">‹</button>
+                            <button class="mbot-btn-save" id="route-step-next" style="flex:0;padding:2px 8px;font-size:11px;" title="Następny etap">›</button>
+                        </div>
+                    </div>
                     <div id="route-steps-list"><span class="route-hint">Brak etapów — dodaj powyżej</span></div>
                     <div class="mbot-btn-row" style="margin-top:4px;">
                         <button class="mbot-btn-start" id="start-route">▶ Start</button>

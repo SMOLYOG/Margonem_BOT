@@ -37,6 +37,7 @@
             mobMaxLevel: "",
             mobName: "",
             healItemId: null,
+            healItemName: null,
             botMode: null,
             gatewayEnabled: false,
             gatewayDest: "",
@@ -175,6 +176,7 @@
         intervalId: null,
         healSlotEl: null,
         healItemId: MBot.storage.get("healItemId"),
+        healItemName: MBot.storage.get("healItemName"),
         healThreshold: MBot.storage.get("healThreshold") ?? 30,
         targetHeroes: [],
         targetElites: [],
@@ -389,6 +391,13 @@
                     </select>
                     <button class="mbot-btn-save" id="add-route-step" style="width:100%;margin-bottom:2px;">+ Dodaj etap</button>
                     <div class="mbot-sep" style="margin:5px 0;"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                        <span style="font-size:10px;color:#666;">Etapy</span>
+                        <div style="display:flex;gap:4px;">
+                            <button class="mbot-btn-save" id="route-step-prev" style="flex:0;padding:2px 8px;font-size:11px;" title="Poprzedni etap">‹</button>
+                            <button class="mbot-btn-save" id="route-step-next" style="flex:0;padding:2px 8px;font-size:11px;" title="Następny etap">›</button>
+                        </div>
+                    </div>
                     <div id="route-steps-list"><span class="route-hint">Brak etapów — dodaj powyżej</span></div>
                     <div class="mbot-btn-row" style="margin-top:4px;">
                         <button class="mbot-btn-start" id="start-route">▶ Start</button>
@@ -620,7 +629,9 @@
                 slot.classList.add('selected');
                 MBot.bot.healSlotEl = item.el || null;
                 MBot.bot.healItemId = item.id;
+                MBot.bot.healItemName = item.name || null;
                 MBot.storage.set('healItemId', item.id);
+                MBot.storage.set('healItemName', item.name || null);
                 updatePreview(item.name, item.imgSrc);
             });
 
@@ -696,12 +707,25 @@
             }
         }
 
+        const _blockedTips = new Map();
+        let _stuckX = null, _stuckY = null, _stuckTicks = 0;
+        const STUCK_TICKS = 8, BLOCKED_MS = 25000;
+
         function attackNearestSI(conditionFn) {
             handleBattleUISI();
             if (Date.now() < MBot.bot.banUntil) return false;
-            if (Date.now() - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
             const hero = document.getElementById('hero');
             if (!hero) return false;
+            const px = hero.offsetLeft, py = hero.offsetTop;
+            const now = Date.now();
+            const inBattle = !!document.getElementById('battleclose')?.offsetParent;
+            if (!inBattle && now - MBot.bot.lastAttackTime < 8000) {
+                if (_stuckX === px && _stuckY === py) _stuckTicks++;
+                else _stuckTicks = 0;
+            } else { _stuckTicks = 0; }
+            _stuckX = px; _stuckY = py;
+            for (const [tip, exp] of _blockedTips) if (exp < now) _blockedTips.delete(tip);
+            if (now - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
             const hr = hero.getBoundingClientRect();
             const hx = hr.left + hr.width / 2;
             const hy = hr.top  + hr.height / 2;
@@ -710,13 +734,25 @@
                 const tip = mob.getAttribute('tip');
                 if (!tip || !conditionFn(tip)) return;
                 if (MBot.config.FORBIDDEN_MOBS.some(n => tip.includes(n))) return;
+                if (_blockedTips.has(tip)) return;
                 const r  = mob.getBoundingClientRect();
                 const dx = hx - (r.left + r.width / 2);
                 const dy = hy - (r.top  + r.height / 2);
                 const d  = Math.hypot(dx, dy);
                 if (d < minDist) { minDist = d; nearest = mob; }
             });
-            if (nearest) { MBot.bot.lastAttackTime = Date.now(); clickElement(nearest); return true; }
+            if (nearest) {
+                if (_stuckTicks >= STUCK_TICKS) {
+                    const tip = nearest.getAttribute('tip');
+                    _blockedTips.set(tip, now + BLOCKED_MS);
+                    console.warn(`[BOT] Zablokowany mob — pomijam na 25s`);
+                    _stuckTicks = 0;
+                    return false;
+                }
+                MBot.bot.lastAttackTime = now;
+                clickElement(nearest);
+                return true;
+            }
             return false;
         }
 
@@ -766,10 +802,23 @@
                 if (hp === null || hp > MBot.bot.healThreshold) return;
                 const now = Date.now();
                 if (now - MBot.bot.lastHealTime < MBot.config.HEAL_COOLDOWN_MS) return;
-                const { healItemId } = MBot.bot;
+                let { healItemId } = MBot.bot;
+                if (!healItemId || !MBot.adapter.itemExists(healItemId)) {
+                    const healItemName = MBot.bot.healItemName || MBot.storage.get('healItemName');
+                    if (healItemName) {
+                        const found = MBot.adapter.getInventoryItems().find(i => i.name === healItemName);
+                        if (found) {
+                            console.log(`[BOT] Zamiennik: ${found.name} (id: ${found.id})`);
+                            MBot.bot.healItemId = found.id;
+                            MBot.storage.set('healItemId', found.id);
+                            healItemId = found.id;
+                            MBot.inventory.render();
+                        }
+                    }
+                }
                 if (!healItemId) return;
                 if (!MBot.adapter.itemExists(healItemId)) {
-                    console.warn('[BOT] Przedmiot zniknął z EQ (zużyty?).');
+                    console.warn('[BOT] Przedmiot zniknął z EQ — brak zamiennika o tej nazwie.');
                     MBot.bot.healSlotEl = null;
                     MBot.bot.healItemId = null;
                     MBot.storage.set('healItemId', null);
@@ -1047,6 +1096,14 @@
                 }));
                 _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
             },
+            setStep(index) {
+                if (index < 0 || index >= _steps.length) return;
+                _currentStep = index;
+                _gatewayFailCount = 0;
+                MBot.storage.set('routeCurrentStep', _currentStep);
+                MBot.ui.renderRouteSteps(MBot.route.getSteps());
+                console.log(`[BOT Route] Ręczna zmiana → etap #${_currentStep + 1}`);
+            },
             start() {
                 if (_steps.length === 0) { console.warn('[BOT Route] Brak etapów'); return; }
                 _gatewayFailCount = 0;
@@ -1233,6 +1290,17 @@
         MBot.route.removeStep(parseInt(btn.dataset.index));
         MBot.ui.renderRouteSteps(MBot.route.getSteps());
     });
+    document.getElementById('route-step-prev').addEventListener('click', () => {
+        const steps = MBot.route.getSteps();
+        const cur   = steps.find(s => s.active)?.index ?? 0;
+        MBot.route.setStep((cur - 1 + steps.length) % steps.length);
+    });
+    document.getElementById('route-step-next').addEventListener('click', () => {
+        const steps = MBot.route.getSteps();
+        const cur   = steps.find(s => s.active)?.index ?? 0;
+        MBot.route.setStep((cur + 1) % steps.length);
+    });
+
     document.getElementById('start-route').addEventListener('click', () => {
         MBot.route.start();
         MBot.ui.renderRouteSteps(MBot.route.getSteps());

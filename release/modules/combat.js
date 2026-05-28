@@ -27,6 +27,12 @@ MBot.combat = (() => {
         }).observe(document.body, { childList: true, subtree: true });
     })();
 
+    // ── Stuck detection (SI) ─────────────────────────────────────────────
+    const _blockedTips = new Map(); // tip → expiry timestamp
+    let _stuckX = null, _stuckY = null, _stuckTicks = 0;
+    const STUCK_TICKS = 8;      // 8 * 400ms ≈ 3s bez ruchu → skip
+    const BLOCKED_MS  = 25000;  // 25s blokady na danego moba
+
     // ── SI helpers ────────────────────────────────────────────────────────
     function clickElement(el) {
         const r = el.getBoundingClientRect();
@@ -53,10 +59,26 @@ MBot.combat = (() => {
     function attackNearestSI(conditionFn) {
         handleBattleUISI();
         if (Date.now() < MBot.bot.banUntil) return false;
-        if (Date.now() - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
 
         const hero = document.getElementById('hero');
         if (!hero) return false;
+
+        // Śledź pozycję hero co tick — nie gated przez cooldown
+        const px = hero.offsetLeft, py = hero.offsetTop;
+        const now = Date.now();
+        const inBattle = !!document.getElementById('battleclose')?.offsetParent;
+        if (!inBattle && now - MBot.bot.lastAttackTime < 8000) {
+            if (_stuckX === px && _stuckY === py) _stuckTicks++;
+            else _stuckTicks = 0;
+        } else {
+            _stuckTicks = 0;
+        }
+        _stuckX = px; _stuckY = py;
+
+        // Usuń przeterminowane blokady
+        for (const [tip, exp] of _blockedTips) if (exp < now) _blockedTips.delete(tip);
+
+        if (now - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
 
         const hr = hero.getBoundingClientRect();
         const hx = hr.left + hr.width  / 2;
@@ -69,6 +91,7 @@ MBot.combat = (() => {
             const tip = mob.getAttribute('tip');
             if (!tip || !conditionFn(tip)) return;
             if (MBot.config.FORBIDDEN_MOBS.some(n => tip.includes(n))) return;
+            if (_blockedTips.has(tip)) return;
 
             const r  = mob.getBoundingClientRect();
             const dx = hx - (r.left + r.width  / 2);
@@ -78,7 +101,15 @@ MBot.combat = (() => {
         });
 
         if (nearest) {
-            MBot.bot.lastAttackTime = Date.now();
+            if (_stuckTicks >= STUCK_TICKS) {
+                const tip = nearest.getAttribute('tip');
+                _blockedTips.set(tip, now + BLOCKED_MS);
+                const name = MBot.adapter.extractNameFromTip(tip) || '?';
+                console.warn(`[BOT] Zablokowany mob "${name}" — pomijam na 25s`);
+                _stuckTicks = 0;
+                return false;
+            }
+            MBot.bot.lastAttackTime = now;
             clickElement(nearest);
             return true;
         }

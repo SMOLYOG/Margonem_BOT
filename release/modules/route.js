@@ -202,6 +202,15 @@ MBot.route = (() => {
             _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
         },
 
+        setStep(index) {
+            if (index < 0 || index >= _steps.length) return;
+            _currentStep = index;
+            _gatewayFailCount = 0;
+            MBot.storage.set('routeCurrentStep', _currentStep);
+            MBot.ui.renderRouteSteps(MBot.route.getSteps());
+            console.log(`[BOT Route] Ręczna zmiana → etap #${_currentStep + 1}`);
+        },
+
         start() {
             if (_steps.length === 0) {
                 console.warn('[BOT Route] Brak etapów — dodaj etapy najpierw');

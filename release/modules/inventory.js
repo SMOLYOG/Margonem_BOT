@@ -43,7 +43,9 @@ MBot.inventory = (() => {
             slot.classList.add('selected');
             MBot.bot.healSlotEl = item.el || null;
             MBot.bot.healItemId = item.id;
+            MBot.bot.healItemName = item.name || null;
             MBot.storage.set('healItemId', item.id);
+            MBot.storage.set('healItemName', item.name || null);
             updatePreview(item.name, item.imgSrc);
         });
 

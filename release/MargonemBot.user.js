@@ -79,6 +79,17 @@
         MBot.route.removeStep(parseInt(btn.dataset.index));
         MBot.ui.renderRouteSteps(MBot.route.getSteps());
     });
+    document.getElementById('route-step-prev').addEventListener('click', () => {
+        const steps = MBot.route.getSteps();
+        const cur   = steps.find(s => s.active)?.index ?? 0;
+        MBot.route.setStep((cur - 1 + steps.length) % steps.length);
+    });
+    document.getElementById('route-step-next').addEventListener('click', () => {
+        const steps = MBot.route.getSteps();
+        const cur   = steps.find(s => s.active)?.index ?? 0;
+        MBot.route.setStep((cur + 1) % steps.length);
+    });
+
     document.getElementById('start-route').addEventListener('click', () => {
         MBot.route.start();
         MBot.ui.renderRouteSteps(MBot.route.getSteps());
