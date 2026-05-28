@@ -1,8 +1,10 @@
 MBot.route = (() => {
     const NO_MOBS_THRESHOLD = 10;
+    const MAX_GATEWAY_FAILS  = 20; // 20 * 400ms = 8s bez znalezienia bramy → cofnij etap
 
-    let _steps = [];       // [{mobs: Set<string>, gateway: string|null}]
+    let _steps = [];
     let _currentStep = 0;
+    let _gatewayFailCount = 0;
 
     function _gatewayName(tip) {
         const tmp = document.createElement('div');
@@ -48,36 +50,59 @@ MBot.route = (() => {
             .map(gw => _gatewayName(gw.getAttribute('tip') || '')).sort().join('|');
     }
 
+    // Szuka bramy: najpierw dokładne dopasowanie, potem częściowe
+    function _findGateway(gatewayKey) {
+        const gateways = [...document.querySelectorAll('.gw')];
+        const exact = gateways.find(gw =>
+            _gatewayName(gw.getAttribute('tip') || '') === gatewayKey
+        );
+        if (exact) return exact;
+        const keyLow = gatewayKey.toLowerCase();
+        return gateways.find(gw =>
+            _gatewayName(gw.getAttribute('tip') || '').toLowerCase().includes(keyLow)
+        ) || null;
+    }
+
     function _tryGateway(gatewayKey) {
         if (!gatewayKey) return;
-        const gateways = [...document.querySelectorAll('.gw')];
-        const target = gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === gatewayKey);
+
+        const target = _findGateway(gatewayKey);
         if (!target) {
-            console.warn('[BOT Route] Nie znaleziono bramy:', gatewayKey);
+            _gatewayFailCount++;
+            if (_gatewayFailCount % 5 === 1) {
+                console.warn(`[BOT Route] Nie znaleziono bramy: "${gatewayKey}" (próba ${_gatewayFailCount})`);
+            }
+            if (_gatewayFailCount >= MAX_GATEWAY_FAILS) {
+                _gatewayFailCount = 0;
+                // Prawdopodobnie jesteśmy na złej mapie — cofnij etap
+                const prev = (_currentStep - 1 + _steps.length) % _steps.length;
+                console.warn(`[BOT Route] Zła mapa — cofam do etapu #${prev + 1}`);
+                _currentStep = prev;
+                MBot.storage.set('routeCurrentStep', _currentStep);
+            }
             return;
         }
 
-        const nextStep = (_currentStep + 1) % _steps.length;
-        const fpBefore = _mapFingerprint();
+        _gatewayFailCount = 0;
+        const nextStep  = (_currentStep + 1) % _steps.length;
+        const fpBefore  = _mapFingerprint();
 
-        // Zapisz następny etap PRZED klikiem — na wypadek pełnego przeładowania strony
         MBot.storage.set('routeCurrentStep', nextStep);
         if (nextStep === 0) {
             console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
         } else {
-            console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+            console.log(`[BOT Route] Brama: "${gatewayKey}" → etap ${nextStep + 1}/${_steps.length}`);
         }
+
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
 
         setTimeout(() => {
             const fpAfter = _mapFingerprint();
             if (fpAfter === fpBefore) {
-                // Mapa się nie zmieniła — cofnij etap i pozwól botowi spróbować ponownie
                 console.warn('[BOT Route] Mapa nie zmieniła się — cofam etap, ponawiam');
                 MBot.storage.set('routeCurrentStep', _currentStep);
             } else {
-                // Mapa zmieniła się przez AJAX (bez przeładowania strony)
                 _currentStep = nextStep;
                 MBot.storage.set('routeCurrentStep', _currentStep);
                 MBot.ui.renderRouteSteps(MBot.route.getSteps());
@@ -104,8 +129,8 @@ MBot.route = (() => {
         const attacked = MBot.combat.attackNearest(conditionFn);
         MBot.heal.autoHeal();
 
-        const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
-        if (attacked || inOrJustAfterBattle) {
+        // Resetuj licznik jeśli: atak, walka w toku (DOM/NI), lub niedawny atak
+        if (attacked || MBot.combat.isInBattle() || Date.now() - MBot.bot.lastAttackTime < 8000) {
             MBot.bot.noMobsTicks = 0;
         } else {
             MBot.bot.noMobsTicks++;
@@ -168,10 +193,10 @@ MBot.route = (() => {
         },
 
         loadFromStorage() {
-            const saved = MBot.storage.get('routeSteps') || [];
+            const saved     = MBot.storage.get('routeSteps') || [];
             const savedStep = MBot.storage.get('routeCurrentStep') || 0;
             _steps = saved.map(s => ({
-                mobs: new Set((s.mobs || []).map(n => n.toLowerCase())),
+                mobs:    new Set((s.mobs || []).map(n => n.toLowerCase())),
                 gateway: s.gateway || null
             }));
             _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
@@ -182,6 +207,7 @@ MBot.route = (() => {
                 console.warn('[BOT Route] Brak etapów — dodaj etapy najpierw');
                 return;
             }
+            _gatewayFailCount = 0;
             _saveState();
             MBot.bot.start('route', tick);
         }

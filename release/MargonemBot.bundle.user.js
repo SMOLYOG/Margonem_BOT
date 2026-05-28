@@ -884,7 +884,9 @@
     // ═══════════════════════════════════════════════════════ route ══
     MBot.route = (() => {
         const NO_MOBS_THRESHOLD = 10;
-        let _steps = [], _currentStep = 0;
+        const MAX_GATEWAY_FAILS  = 20;
+
+        let _steps = [], _currentStep = 0, _gatewayFailCount = 0;
 
         function _gatewayName(tip) {
             const tmp = document.createElement('div');
@@ -929,18 +931,41 @@
                 .map(gw => _gatewayName(gw.getAttribute('tip') || '')).sort().join('|');
         }
 
+        function _findGateway(gatewayKey) {
+            const gateways = [...document.querySelectorAll('.gw')];
+            const exact = gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === gatewayKey);
+            if (exact) return exact;
+            const keyLow = gatewayKey.toLowerCase();
+            return gateways.find(gw =>
+                _gatewayName(gw.getAttribute('tip') || '').toLowerCase().includes(keyLow)
+            ) || null;
+        }
+
         function _tryGateway(gatewayKey) {
             if (!gatewayKey) return;
-            const gateways = [...document.querySelectorAll('.gw')];
-            const target = gateways.find(gw => _gatewayName(gw.getAttribute('tip') || '') === gatewayKey);
-            if (!target) { console.warn('[BOT Route] Nie znaleziono bramy:', gatewayKey); return; }
+            const target = _findGateway(gatewayKey);
+            if (!target) {
+                _gatewayFailCount++;
+                if (_gatewayFailCount % 5 === 1) {
+                    console.warn(`[BOT Route] Nie znaleziono bramy: "${gatewayKey}" (próba ${_gatewayFailCount})`);
+                }
+                if (_gatewayFailCount >= MAX_GATEWAY_FAILS) {
+                    _gatewayFailCount = 0;
+                    const prev = (_currentStep - 1 + _steps.length) % _steps.length;
+                    console.warn(`[BOT Route] Zła mapa — cofam do etapu #${prev + 1}`);
+                    _currentStep = prev;
+                    MBot.storage.set('routeCurrentStep', _currentStep);
+                }
+                return;
+            }
+            _gatewayFailCount = 0;
             const nextStep = (_currentStep + 1) % _steps.length;
             const fpBefore = _mapFingerprint();
             MBot.storage.set('routeCurrentStep', nextStep);
             if (nextStep === 0) {
                 console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
             } else {
-                console.log('[BOT Route] Brama:', gatewayKey, '→ etap', nextStep + 1, '/', _steps.length);
+                console.log(`[BOT Route] Brama: "${gatewayKey}" → etap ${nextStep + 1}/${_steps.length}`);
             }
             MBot.bot.transitioning = true;
             try { _clickEl(target); } catch(e) {}
@@ -966,8 +991,7 @@
             const conditionFn = MBot.adapter.isNI ? _buildConditionNI(step.mobs) : _buildConditionSI(step.mobs);
             const attacked = MBot.combat.attackNearest(conditionFn);
             MBot.heal.autoHeal();
-            const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
-            if (attacked || inOrJustAfterBattle) {
+            if (attacked || MBot.combat.isInBattle() || Date.now() - MBot.bot.lastAttackTime < 8000) {
                 MBot.bot.noMobsTicks = 0;
             } else {
                 MBot.bot.noMobsTicks++;
@@ -1025,6 +1049,7 @@
             },
             start() {
                 if (_steps.length === 0) { console.warn('[BOT Route] Brak etapów'); return; }
+                _gatewayFailCount = 0;
                 _saveState();
                 MBot.bot.start('route', tick);
             }
