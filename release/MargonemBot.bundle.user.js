@@ -819,15 +819,18 @@
         // ── Stuck detection (SI) ─────────────────────────────────────────────
         const _blockedTips = new Map();
         let _stuckX = null, _stuckY = null, _stuckTicks = 0;
-        const STUCK_TICKS = 8;
-        const BLOCKED_MS  = 25000;
+        let _stuckMobTip = null, _stuckAttempt = 0;
+        const STUCK_TICKS  = 8;
+        const MAX_ATTEMPTS = 4;
+        const BLOCKED_MS   = 10000;
+        const SIDE_OFFSETS = [[0,0],[50,0],[-50,0],[0,50],[0,-50]];
 
-        function clickElement(el) {
+        function clickElement(el, dx, dy) {
             const r = el.getBoundingClientRect();
             el.dispatchEvent(new MouseEvent('click', {
                 bubbles: true, cancelable: true,
-                clientX: r.left + r.width  / 2,
-                clientY: r.top  + r.height / 2
+                clientX: r.left + r.width  / 2 + (dx || 0),
+                clientY: r.top  + r.height / 2 + (dy || 0)
             }));
         }
 
@@ -857,10 +860,17 @@
             const now = Date.now();
             const inBattle = !!document.getElementById('battleclose')?.offsetParent;
             if (!inBattle && now - MBot.bot.lastAttackTime < 8000) {
-                if (_stuckX === px && _stuckY === py) _stuckTicks++;
-                else _stuckTicks = 0;
+                if (_stuckX === px && _stuckY === py) {
+                    _stuckTicks++;
+                } else {
+                    _stuckTicks = 0;
+                    _stuckMobTip = null;
+                    _stuckAttempt = 0;
+                }
             } else {
                 _stuckTicks = 0;
+                _stuckMobTip = null;
+                _stuckAttempt = 0;
             }
             _stuckX = px; _stuckY = py;
 
@@ -889,14 +899,28 @@
             });
 
             if (nearest) {
+                const tip = nearest.getAttribute('tip');
+
                 if (_stuckTicks >= STUCK_TICKS) {
-                    const tip = nearest.getAttribute('tip');
-                    _blockedTips.set(tip, now + BLOCKED_MS);
-                    const name = MBot.adapter.extractNameFromTip(tip) || '?';
-                    console.warn(`[BOT] Zablokowany mob "${name}" — pomijam na 25s`);
                     _stuckTicks = 0;
-                    return false;
+                    if (_stuckMobTip !== tip) { _stuckMobTip = tip; _stuckAttempt = 0; }
+                    _stuckAttempt++;
+
+                    if (_stuckAttempt > MAX_ATTEMPTS) {
+                        _blockedTips.set(tip, now + BLOCKED_MS);
+                        const name = MBot.adapter.extractNameFromTip(tip) || '?';
+                        console.warn(`[BOT] Mob "${name}" nieosiągalny — pomijam na 10s`);
+                        _stuckMobTip = null; _stuckAttempt = 0;
+                        return false;
+                    }
+
+                    const [dx, dy] = SIDE_OFFSETS[_stuckAttempt % SIDE_OFFSETS.length];
+                    console.warn(`[BOT] Stuck — próba ${_stuckAttempt}/${MAX_ATTEMPTS} z offset (${dx},${dy})`);
+                    MBot.bot.lastAttackTime = now;
+                    clickElement(nearest, dx, dy);
+                    return true;
                 }
+
                 MBot.bot.lastAttackTime = now;
                 clickElement(nearest);
                 return true;
