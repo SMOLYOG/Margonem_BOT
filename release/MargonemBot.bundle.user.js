@@ -36,14 +36,15 @@
             mobMinLevel: "",
             mobMaxLevel: "",
             mobName: "",
+            heroesInput: "",
+            elitesInput: "",
             healItemId: null,
             healItemName: null,
             botMode: null,
             gatewayEnabled: false,
             gatewayDest: "",
             routeSteps: [],
-            routeCurrentStep: 0,
-            captchaEnabled: 1
+            routeCurrentStep: 0
         };
 
         function load() {
@@ -212,14 +213,28 @@
     MBot.ui = (() => {
         const CSS = `
         #mbot-root {
-            position: fixed; top: 20px; right: 20px; width: 300px;
-            background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 10px;
-            z-index: 99999; color: #e0e0e0; font-family: Arial, sans-serif;
-            font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.7); user-select: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            border-radius: 10px;
+            z-index: 99999;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+            user-select: none;
         }
         #mbot-header {
-            background: #111; padding: 8px 12px; display: flex; align-items: center;
-            justify-content: space-between; border-radius: 10px 10px 0 0; cursor: grab;
+            background: #111;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 10px 10px 0 0;
+            cursor: grab;
         }
         #mbot-header.minimized { border-radius: 10px; }
         #mbot-header:active { cursor: grabbing; }
@@ -227,77 +242,155 @@
         #mbot-header-controls { display: flex; align-items: center; gap: 8px; }
         #mbot-status-dot { font-size: 10px; color: #666; }
         #mbot-minimize {
-            background: #2a2a2a; border: 1px solid #444; color: #ccc; border-radius: 4px;
-            width: 22px; height: 22px; cursor: pointer; font-size: 13px;
-            display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #ccc;
+            border-radius: 4px;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
         }
         #mbot-minimize:hover { background: #3a3a3a; }
         #mbot-body { border-top: 1px solid #2a2a2a; }
         #mbot-tabs {
-            display: flex; gap: 4px; padding: 8px 8px 0;
-            background: #161616; border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            gap: 4px;
+            padding: 8px 8px 0;
+            background: #161616;
+            border-bottom: 1px solid #2a2a2a;
         }
         .mbot-tab {
-            flex: 1; background: #252525; border: 1px solid #3a3a3a; border-bottom: none;
-            color: #999; border-radius: 5px 5px 0 0; padding: 5px 4px; cursor: pointer;
-            font-size: 11px; transition: background 0.12s;
+            flex: 1;
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            border-bottom: none;
+            color: #999;
+            border-radius: 5px 5px 0 0;
+            padding: 5px 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.12s;
         }
         .mbot-tab:hover { background: #333; color: #ccc; }
         .mbot-tab.active { background: #1a1a1a; color: #e0e0e0; border-color: #484848; }
         .mbot-panel { padding: 10px; display: none; }
         .mbot-panel.active { display: block; }
-        .mbot-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .mbot-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
         .mbot-row label { color: #aaa; white-space: nowrap; flex-shrink: 0; }
         .mbot-label { display: block; color: #aaa; margin-bottom: 3px; font-size: 11px; }
-        #mbot-root input[type=number], #mbot-root input[type=text] {
-            background: #2a2a2a; border: 1px solid #444; color: #e0e0e0;
-            border-radius: 4px; padding: 3px 6px; font-size: 11px; flex: 1;
+        #mbot-root input[type=number],
+        #mbot-root input[type=text] {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            padding: 3px 6px;
+            font-size: 11px;
+            flex: 1;
         }
         .mbot-btn-row { display: flex; gap: 6px; margin-top: 8px; }
         .mbot-btn-start {
-            flex: 1; background: #1a3a1a; border: 1px solid #3a7a3a; color: #8f8;
-            border-radius: 5px; padding: 5px; cursor: pointer; font-size: 11px;
+            flex: 1;
+            background: #1a3a1a;
+            border: 1px solid #3a7a3a;
+            color: #8f8;
+            border-radius: 5px;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 11px;
         }
         .mbot-btn-start:hover { background: #2a4a2a; }
         .mbot-btn-stop {
-            flex: 1; background: #3a1a1a; border: 1px solid #7a3a3a; color: #f88;
-            border-radius: 5px; padding: 5px; cursor: pointer; font-size: 11px;
+            flex: 1;
+            background: #3a1a1a;
+            border: 1px solid #7a3a3a;
+            color: #f88;
+            border-radius: 5px;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 11px;
         }
         .mbot-btn-stop:hover { background: #4a2a2a; }
         .mbot-btn-save {
-            flex: 1; background: #1a2a3a; border: 1px solid #3a5a7a; color: #8af;
-            border-radius: 5px; padding: 5px; cursor: pointer; font-size: 11px;
+            flex: 1;
+            background: #1a2a3a;
+            border: 1px solid #3a5a7a;
+            color: #8af;
+            border-radius: 5px;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 11px;
         }
         .mbot-btn-save:hover { background: #1a3a4a; }
         #mbot-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 5px 10px; background: #111; border-top: 1px solid #2a2a2a;
-            border-radius: 0 0 10px 10px; font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            background: #111;
+            border-top: 1px solid #2a2a2a;
+            border-radius: 0 0 10px 10px;
+            font-size: 10px;
         }
         #mbot-mode-label { color: #666; }
         #mbot-hp-label { color: #888; }
         .mbot-sep { border-top: 1px solid #2a2a2a; margin: 8px 0; }
         #heal-selected {
-            background: #2a2a2a; border: 1px solid #444; border-radius: 5px;
-            padding: 5px 8px; margin-bottom: 8px; min-height: 32px;
-            display: flex; align-items: center; gap: 8px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 5px 8px;
+            margin-bottom: 8px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         #inv-grid {
-            display: grid; grid-template-columns: repeat(5, 50px);
-            gap: 4px; margin: 6px 0; max-height: 216px; overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            gap: 4px;
+            margin: 6px 0;
+            max-height: 216px;
+            overflow-y: auto;
         }
         #inv-grid .slot {
-            width: 50px; height: 50px; background: #2a2a2a; border: 1px solid #444;
-            border-radius: 4px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; position: relative; overflow: hidden;
-            transition: border-color 0.12s; box-sizing: border-box;
+            width: 50px;
+            height: 50px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.12s;
+            box-sizing: border-box;
         }
         #inv-grid .slot:hover { border-color: #888; }
         #inv-grid .slot.selected { border: 2px solid #4caf50; background: #1a2e1a; }
         #inv-grid .slot img { width: 80%; height: 80%; object-fit: contain; pointer-events: none; }
         #inv-grid .slot .amount {
-            position: absolute; bottom: 1px; right: 2px; font-size: 9px;
-            color: #fff; text-shadow: 0 0 3px #000; pointer-events: none;
+            position: absolute;
+            bottom: 1px;
+            right: 2px;
+            font-size: 9px;
+            color: #fff;
+            text-shadow: 0 0 3px #000;
+            pointer-events: none;
         }
         #heal-save-notice { font-size: 10px; color: #4caf50; margin-top: 4px; display: none; }
         #route-mob-list {
@@ -314,11 +407,13 @@
             color: #e0e0e0; border-radius: 4px; padding: 3px 6px;
             font-size: 11px; box-sizing: border-box; margin-bottom: 4px;
         }
-        #route-steps-list { max-height: 110px; overflow-y: auto; margin-bottom: 4px; min-height: 22px; }
+        #route-steps-list {
+            max-height: 110px; overflow-y: auto; margin-bottom: 4px; min-height: 22px;
+        }
         .route-step {
-            display: flex; align-items: center; gap: 4px; padding: 3px 5px;
-            border-radius: 3px; margin-bottom: 2px; background: #222;
-            border: 1px solid #333; font-size: 10px; color: #ccc;
+            display: flex; align-items: center; gap: 4px;
+            padding: 3px 5px; border-radius: 3px; margin-bottom: 2px;
+            background: #222; border: 1px solid #333; font-size: 10px; color: #ccc;
         }
         .route-step.active-step { border-color: #ffa726; background: #2a1a00; color: #ffd580; }
         .route-step-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -334,7 +429,7 @@
         #captcha-toggle { width: 100%; }
         #captcha-toggle.active { background: #1a3a1a; border-color: #3a7a3a; color: #8f8; }
         .captcha-info { font-size: 10px; color: #666; margin-top: 8px; line-height: 1.4; }
-        `;
+    `;
 
         const HTML = `
         <div id="mbot-root">
@@ -352,6 +447,7 @@
                     <button class="mbot-tab" data-tab="heal">💊 Heal</button>
                     <button class="mbot-tab" data-tab="captcha">🔐 CAPTCHA</button>
                 </div>
+
                 <div id="mbot-panel-farm" class="mbot-panel active">
                     <div class="mbot-row">
                         <label>Min lvl</label>
@@ -376,9 +472,10 @@
                     </div>
                     <div class="mbot-row">
                         <label>Mapa docelowa</label>
-                        <input type="text" id="gateway-dest" placeholder="dowolna...">
+                        <input type="text" id="gateway-dest" placeholder="dowolna..." title="Część nazwy mapy docelowej z tip bramy">
                     </div>
                 </div>
+
                 <div id="mbot-panel-route" class="mbot-panel">
                     <div class="mbot-btn-row" style="margin-bottom:6px;">
                         <button class="mbot-btn-save" id="scan-mobs">📍 Skanuj moby</button>
@@ -402,9 +499,10 @@
                     <div class="mbot-btn-row" style="margin-top:4px;">
                         <button class="mbot-btn-start" id="start-route">▶ Start</button>
                         <button class="mbot-btn-stop"  id="stop-route">■ Stop</button>
-                        <button class="mbot-btn-stop"  id="clear-route" style="flex:0;padding:5px 10px;" title="Wyczyść">🗑</button>
+                        <button class="mbot-btn-stop"  id="clear-route" style="flex:0;padding:5px 10px;" title="Wyczyść wszystkie etapy">🗑</button>
                     </div>
                 </div>
+
                 <div id="mbot-panel-heal" class="mbot-panel">
                     <div id="heal-selected">
                         <img id="heal-item-img" src="" style="width:22px;height:22px;object-fit:contain;display:none;">
@@ -426,14 +524,16 @@
                     </div>
                     <div id="heal-save-notice">✓ Ustawienia zapisane</div>
                 </div>
+
                 <div id="mbot-panel-captcha" class="mbot-panel">
-                    <button class="mbot-btn-start active" id="captcha-toggle">■ Wyłącz auto-CAPTCHA</button>
+                    <button class="mbot-btn-start active" id="captcha-toggle" data-active="1">■ Wyłącz auto-CAPTCHA</button>
                     <div class="captcha-info">
                         Wymaga: <b>captcha_clicker.py</b> na localhost:8765.<br>
                         Auto-kliknie "Rozwiąż teraz", wykryje<br>
                         odpowiedni symbol i potwierdzi.
                     </div>
                 </div>
+
                 <div id="mbot-ban-bar"></div>
                 <div id="mbot-footer">
                     <span id="mbot-mode-label">● OFF</span>
@@ -441,7 +541,7 @@
                 </div>
             </div>
         </div>
-        `;
+    `;
 
         return {
             build() {
@@ -453,6 +553,7 @@
                 this._initDrag();
                 this._initMinimize();
             },
+
             _initTabs() {
                 document.querySelectorAll(".mbot-tab").forEach(btn => {
                     btn.addEventListener("click", () => {
@@ -461,6 +562,7 @@
                     });
                 });
             },
+
             switchTab(name) {
                 document.querySelectorAll(".mbot-tab").forEach(b =>
                     b.classList.toggle("active", b.dataset.tab === name)
@@ -469,10 +571,12 @@
                     p.classList.toggle("active", p.id === `mbot-panel-${name}`)
                 );
             },
+
             _initDrag() {
                 const root   = document.getElementById("mbot-root");
                 const header = document.getElementById("mbot-header");
                 let dragging = false, ox = 0, oy = 0;
+
                 header.addEventListener("mousedown", e => {
                     if (e.target.id === "mbot-minimize") return;
                     dragging = true;
@@ -481,18 +585,22 @@
                     oy = e.clientY - rect.top;
                     e.preventDefault();
                 });
+
                 document.addEventListener("mousemove", e => {
                     if (!dragging) return;
                     root.style.right = "auto";
                     root.style.left  = Math.max(0, e.clientX - ox) + "px";
                     root.style.top   = Math.max(0, e.clientY - oy) + "px";
                 });
+
                 document.addEventListener("mouseup", () => { dragging = false; });
             },
+
             _initMinimize() {
                 const btn    = document.getElementById("mbot-minimize");
                 const body   = document.getElementById("mbot-body");
                 const header = document.getElementById("mbot-header");
+
                 btn.addEventListener("click", () => {
                     const isHidden = body.style.display === "none";
                     body.style.display = isHidden ? "" : "none";
@@ -500,6 +608,7 @@
                     header.classList.toggle("minimized", !isHidden);
                 });
             },
+
             renderRouteMobs(mobs) {
                 const container = document.getElementById('route-mob-list');
                 if (!mobs || !mobs.size) {
@@ -517,6 +626,7 @@
                     container.appendChild(lbl);
                 });
             },
+
             renderRouteSteps(steps) {
                 const container = document.getElementById('route-steps-list');
                 if (!steps || steps.length === 0) {
@@ -541,6 +651,7 @@
                     container.appendChild(div);
                 });
             },
+
             renderRouteGateways(gateways) {
                 const sel = document.getElementById('route-gateway-select');
                 sel.innerHTML = '<option value="">— zostań na mapie —</option>';
@@ -551,6 +662,7 @@
                     sel.appendChild(opt);
                 });
             },
+
             showBan(ms) {
                 const bar = document.getElementById('mbot-ban-bar');
                 if (!bar) return;
@@ -563,18 +675,21 @@
                     else { bar.textContent = `⛔ Ban na bicie — ${rem}s`; }
                 }, 1000);
             },
+
             setStatus(mode) {
                 const dot   = document.getElementById("mbot-status-dot");
                 const label = document.getElementById("mbot-mode-label");
                 const map = {
-                    off:   { text: "● OFF",   color: "#666"    },
-                    farm:  { text: "● FARM",  color: "#4caf50" },
-                    route: { text: "● ROUTE", color: "#ffa726" }
+                    off:    { text: "● OFF",    color: "#666"    },
+                    farm:   { text: "● FARM",   color: "#4caf50" },
+                    route:  { text: "● ROUTE",  color: "#ffa726" },
+                    search: { text: "● SEARCH", color: "#64b5f6" }
                 };
                 const cfg = map[mode] || map.off;
                 dot.textContent   = cfg.text;  dot.style.color   = cfg.color;
                 label.textContent = cfg.text;  label.style.color = cfg.color;
             },
+
             updateHP(hp) {
                 const el = document.getElementById("mbot-hp-label");
                 if (hp === null) { el.textContent = "HP: —"; el.style.color = "#888"; return; }
@@ -640,21 +755,28 @@
 
         return {
             extractNameFromTip: (tip) => MBot.adapter.extractNameFromTip(tip),
+
             clearPreview() {
                 document.getElementById('heal-item-label').textContent = '⚠️ Przedmiot zużyty — wybierz nowy';
                 document.getElementById('heal-item-label').style.color = '#f88';
                 document.getElementById('heal-item-img').style.display = 'none';
             },
+
             render() {
                 const grid = document.getElementById('inv-grid');
                 grid.innerHTML = '';
+
                 const items = MBot.adapter.getInventoryItems();
+
                 if (!items.length) {
                     grid.innerHTML = `<div style="grid-column:span 5;color:#666;font-size:11px;padding:4px;">
-                        ${MBot.adapter.isNI ? 'Brak przedmiotów w ekwipunku.' : 'Brak przedmiotów — otwórz ekwipunek w grze.'}
+                        ${MBot.adapter.isNI
+                            ? 'Brak przedmiotów w ekwipunku.'
+                            : 'Brak przedmiotów — otwórz ekwipunek w grze.'}
                     </div>`;
                     return;
                 }
+
                 items.forEach(item => grid.appendChild(buildSlot(item, grid)));
             }
         };
@@ -688,64 +810,82 @@
             }).observe(document.body, { childList: true, subtree: true });
         })();
 
+        // ── Stuck detection (SI) ─────────────────────────────────────────────
+        const _blockedTips = new Map();
+        let _stuckX = null, _stuckY = null, _stuckTicks = 0;
+        const STUCK_TICKS = 8;
+        const BLOCKED_MS  = 25000;
+
         function clickElement(el) {
             const r = el.getBoundingClientRect();
             el.dispatchEvent(new MouseEvent('click', {
                 bubbles: true, cancelable: true,
-                clientX: r.left + r.width / 2, clientY: r.top + r.height / 2
+                clientX: r.left + r.width  / 2,
+                clientY: r.top  + r.height / 2
             }));
         }
 
         function handleBattleUISI() {
             const autobattle = document.getElementById('autobattleButton');
             if (autobattle && autobattle.style.display !== 'none') autobattle.click();
+
             const battleClose = document.getElementById('battleclose');
             if (battleClose && battleClose.style.display !== 'none') battleClose.click();
+
             const loots = document.getElementById('loots_button');
             if (loots && loots.style.display !== 'none' && loots.innerText.trim()) {
                 try { loots.click(); } catch (e) {}
             }
         }
 
-        const _blockedTips = new Map();
-        let _stuckX = null, _stuckY = null, _stuckTicks = 0;
-        const STUCK_TICKS = 8, BLOCKED_MS = 25000;
-
         function attackNearestSI(conditionFn) {
             handleBattleUISI();
             if (Date.now() < MBot.bot.banUntil) return false;
+
             const hero = document.getElementById('hero');
             if (!hero) return false;
+
             const px = hero.offsetLeft, py = hero.offsetTop;
             const now = Date.now();
             const inBattle = !!document.getElementById('battleclose')?.offsetParent;
             if (!inBattle && now - MBot.bot.lastAttackTime < 8000) {
                 if (_stuckX === px && _stuckY === py) _stuckTicks++;
                 else _stuckTicks = 0;
-            } else { _stuckTicks = 0; }
+            } else {
+                _stuckTicks = 0;
+            }
             _stuckX = px; _stuckY = py;
+
             for (const [tip, exp] of _blockedTips) if (exp < now) _blockedTips.delete(tip);
+
             if (now - MBot.bot.lastAttackTime < MBot.config.ATTACK_COOLDOWN_MS) return false;
+
             const hr = hero.getBoundingClientRect();
-            const hx = hr.left + hr.width / 2;
+            const hx = hr.left + hr.width  / 2;
             const hy = hr.top  + hr.height / 2;
-            let nearest = null, minDist = Infinity;
+
+            let nearest = null;
+            let minDist = Infinity;
+
             document.querySelectorAll('.npc').forEach(mob => {
                 const tip = mob.getAttribute('tip');
                 if (!tip || !conditionFn(tip)) return;
                 if (MBot.config.FORBIDDEN_MOBS.some(n => tip.includes(n))) return;
                 if (_blockedTips.has(tip)) return;
+
                 const r  = mob.getBoundingClientRect();
-                const dx = hx - (r.left + r.width / 2);
+                const dx = hx - (r.left + r.width  / 2);
                 const dy = hy - (r.top  + r.height / 2);
                 const d  = Math.hypot(dx, dy);
                 if (d < minDist) { minDist = d; nearest = mob; }
             });
+
             if (nearest) {
                 if (_stuckTicks >= STUCK_TICKS) {
                     const tip = nearest.getAttribute('tip');
                     _blockedTips.set(tip, now + BLOCKED_MS);
-                    console.warn(`[BOT] Zablokowany mob — pomijam na 25s`);
+                    const name = MBot.adapter.extractNameFromTip(tip) || '?';
+                    console.warn(`[BOT] Zablokowany mob "${name}" — pomijam na 25s`);
                     _stuckTicks = 0;
                     return false;
                 }
@@ -762,21 +902,32 @@
             if (!window.Engine) return;
             if (MBot.bot.inBattle) return;
             if (Date.now() < MBot.bot.banUntil) return;
+
             try {
                 const hx = Engine.hero.d.x;
                 const hy = Engine.hero.d.y;
                 if (hx == null || hy == null) return;
-                let nearest = null, minDist = Infinity;
+
+                let nearest = null;
+                let minDist = Infinity;
+
                 Engine.renderer.getList().slice().forEach(o => {
                     if (!o || o.canvasObjectType !== 'NPC') return;
                     if (!o.d || !MONSTER_TYPES.has(o.d.type)) return;
                     if (MBot.config.FORBIDDEN_MOBS.some(n => (o.d.name || '').includes(n))) return;
                     if (!conditionFn(o.d)) return;
+
                     const d = Math.hypot(hx - o.d.x, hy - o.d.y);
                     if (d < minDist) { minDist = d; nearest = o; }
                 });
-                if (nearest) { MBot.bot.inBattle = true; window._g(`fight&a=attack&id=${nearest.d.id}`); }
-            } catch (err) { console.warn('[BOT NI] attackNearest error:', err); }
+
+                if (nearest) {
+                    MBot.bot.inBattle = true;
+                    window._g(`fight&a=attack&id=${nearest.d.id}`);
+                }
+            } catch (err) {
+                console.warn('[BOT NI] attackNearest error:', err);
+            }
         }
 
         return {
@@ -784,11 +935,13 @@
                 if (MBot.adapter.isNI) { attackNearestNI(conditionFn); return false; }
                 return attackNearestSI(conditionFn);
             },
+
             isInBattle() {
                 if (MBot.adapter.isNI) return MBot.bot.inBattle;
                 const ab = document.getElementById('autobattleButton');
                 const bc = document.getElementById('battleclose');
-                return (ab && ab.style.display !== 'none') || (bc && bc.style.display !== 'none');
+                return (ab && ab.style.display !== 'none') ||
+                       (bc && bc.style.display !== 'none');
             }
         };
     })();
@@ -800,9 +953,12 @@
                 const hp = MBot.adapter.readHP();
                 MBot.ui.updateHP(hp);
                 if (hp === null || hp > MBot.bot.healThreshold) return;
+
                 const now = Date.now();
                 if (now - MBot.bot.lastHealTime < MBot.config.HEAL_COOLDOWN_MS) return;
+
                 let { healItemId } = MBot.bot;
+
                 if (!healItemId || !MBot.adapter.itemExists(healItemId)) {
                     const healItemName = MBot.bot.healItemName || MBot.storage.get('healItemName');
                     if (healItemName) {
@@ -816,7 +972,9 @@
                         }
                     }
                 }
+
                 if (!healItemId) return;
+
                 if (!MBot.adapter.itemExists(healItemId)) {
                     console.warn('[BOT] Przedmiot zniknął z EQ — brak zamiennika o tej nazwie.');
                     MBot.bot.healSlotEl = null;
@@ -826,6 +984,7 @@
                     MBot.inventory.render();
                     return;
                 }
+
                 MBot.bot.lastHealTime = now;
                 console.log(`[BOT] HP ${hp}% — leczę (id: ${healItemId})`);
                 MBot.adapter.useItem(healItemId);
@@ -875,7 +1034,8 @@
             const r = el.getBoundingClientRect();
             el.dispatchEvent(new MouseEvent('click', {
                 bubbles: true, cancelable: true, view: window,
-                clientX: r.left + r.width / 2, clientY: r.top + r.height / 2
+                clientX: r.left + r.width  / 2,
+                clientY: r.top  + r.height / 2
             }));
         }
 
@@ -901,6 +1061,7 @@
                 : buildConditionSI(minLevel, maxLevel, mobName);
             const attacked = MBot.combat.attackNearest(conditionFn);
             MBot.heal.autoHeal();
+
             if (!MBot.adapter.isNI) {
                 const inOrJustAfterBattle = Date.now() - MBot.bot.lastAttackTime < 8000;
                 if (attacked || inOrJustAfterBattle) {
@@ -987,13 +1148,14 @@
 
         function _tryGateway(gatewayKey) {
             if (!gatewayKey) return;
+
             const target = _findGateway(gatewayKey);
             if (!target) {
                 _gatewayFailCount++;
                 if (_gatewayFailCount === 1) {
                     console.warn(`[BOT Route] Nie znaleziono bramy: "${gatewayKey}"`);
                 }
-                // Brama nie istnieje na tej mapie → zła mapa → cofnij etap
+                // Brama nie istnieje na tej mapie → zła mapa → cofnij etap (cyklicznie)
                 if (_gatewayFailCount >= MAX_GATEWAY_FAILS) {
                     _gatewayFailCount = 0;
                     const prev = (_currentStep - 1 + _steps.length) % _steps.length;
@@ -1003,16 +1165,19 @@
                 }
                 return;
             }
+
             // Brama znaleziona — klikamy i od razu przechodzimy na następny etap
             _gatewayFailCount = 0;
             const nextStep = (_currentStep + 1) % _steps.length;
             _currentStep = nextStep;
             MBot.storage.set('routeCurrentStep', _currentStep);
+
             if (nextStep === 0) {
                 console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
             } else {
                 console.log(`[BOT Route] Brama: "${gatewayKey}" → etap ${nextStep + 1}/${_steps.length}`);
             }
+
             MBot.bot.transitioning = true;
             try { _clickEl(target); } catch(e) {}
             setTimeout(() => { MBot.bot.transitioning = false; }, 3000);
@@ -1022,10 +1187,13 @@
             if (MBot.bot.transitioning) return;
             const step = _steps[_currentStep];
             if (!step) return;
+
             if (step.mobs.size === 0) { MBot.heal.autoHeal(); _tryGateway(step.gateway); return; }
+
             const conditionFn = MBot.adapter.isNI ? _buildConditionNI(step.mobs) : _buildConditionSI(step.mobs);
             const attacked = MBot.combat.attackNearest(conditionFn);
             MBot.heal.autoHeal();
+
             if (attacked || Date.now() - MBot.bot.lastAttackTime < 8000) {
                 MBot.bot.noMobsTicks = 0;
             } else {
@@ -1050,38 +1218,54 @@
                 });
                 return mobs;
             },
+
             scanGateways() {
                 return [...document.querySelectorAll('.gw')].map(gw => ({
-                    key: _gatewayName(gw.getAttribute('tip') || ''),
+                    key:   _gatewayName(gw.getAttribute('tip') || ''),
                     label: _gatewayName(gw.getAttribute('tip') || '')
                 }));
             },
+
             addStep(names, gateway) {
-                _steps.push({ mobs: new Set(names.map(n => n.toLowerCase())), gateway: gateway || null });
+                _steps.push({
+                    mobs: new Set(names.map(n => n.toLowerCase())),
+                    gateway: gateway || null
+                });
                 _saveState();
             },
+
             removeStep(index) {
                 _steps.splice(index, 1);
                 if (_currentStep >= _steps.length && _steps.length > 0) _currentStep = _steps.length - 1;
                 if (_steps.length === 0) _currentStep = 0;
                 _saveState();
             },
-            clearSteps() { _steps = []; _currentStep = 0; _saveState(); },
+
+            clearSteps() {
+                _steps = [];
+                _currentStep = 0;
+                _saveState();
+            },
+
             getSteps() {
                 return _steps.map((s, i) => ({
-                    index: i, mobs: [...s.mobs], gateway: s.gateway,
+                    index: i,
+                    mobs: [...s.mobs],
+                    gateway: s.gateway,
                     active: i === _currentStep && MBot.bot.mode === 'route'
                 }));
             },
+
             loadFromStorage() {
-                const saved = MBot.storage.get('routeSteps') || [];
+                const saved     = MBot.storage.get('routeSteps') || [];
                 const savedStep = MBot.storage.get('routeCurrentStep') || 0;
                 _steps = saved.map(s => ({
-                    mobs: new Set((s.mobs || []).map(n => n.toLowerCase())),
+                    mobs:    new Set((s.mobs || []).map(n => n.toLowerCase())),
                     gateway: s.gateway || null
                 }));
                 _currentStep = Math.min(savedStep, Math.max(0, _steps.length - 1));
             },
+
             setStep(index) {
                 if (index < 0 || index >= _steps.length) return;
                 _currentStep = index;
@@ -1090,8 +1274,12 @@
                 MBot.ui.renderRouteSteps(MBot.route.getSteps());
                 console.log(`[BOT Route] Ręczna zmiana → etap #${_currentStep + 1}`);
             },
+
             start() {
-                if (_steps.length === 0) { console.warn('[BOT Route] Brak etapów'); return; }
+                if (_steps.length === 0) {
+                    console.warn('[BOT Route] Brak etapów — dodaj etapy najpierw');
+                    return;
+                }
                 _gatewayFailCount = 0;
                 _saveState();
                 MBot.bot.start('route', tick);
@@ -1143,18 +1331,26 @@
             try {
                 const container = document.querySelector('.captcha__buttons');
                 if (!container) { _log('Brak .captcha__buttons'); _solving = false; return; }
+
                 const sym     = _targetSymbol();
                 _log(`Symbol: "${sym}"`);
                 const buttons = [...container.querySelectorAll('.btn.btn-wood')];
                 const targets = buttons.filter(b => _isTarget(b, sym));
                 const names   = targets.map(b => b.querySelector('span.gfont').getAttribute('name'));
                 _log(`Docelowe: ${names.join(', ')}`);
+
                 if (targets.length === 0) { _log('Brak pasujących kafelków'); _solving = false; return; }
+
                 const confirmSpan = [...document.querySelectorAll('.captcha__confirm span.gfont')]
                     .find(s => s.getAttribute('name') === 'Potwierdzam');
                 const confirmBtn = confirmSpan?.closest('.btn');
-                const payload = { tiles: targets.map(_center), confirm: confirmBtn ? _center(confirmBtn) : null };
+
+                const payload = {
+                    tiles:   targets.map(_center),
+                    confirm: confirmBtn ? _center(confirmBtn) : null,
+                };
                 _log('Wysyłam do captcha_clicker: ' + JSON.stringify(payload.tiles));
+
                 try {
                     const res = await fetch(CLICKER_URL, {
                         method: 'POST',
@@ -1166,6 +1362,7 @@
                 } catch (e) {
                     _log('Błąd fetch (czy captcha_clicker.py działa?): ' + e.message);
                 }
+
                 await _delay(4000);
                 if (!document.querySelector('.captcha__buttons') ||
                     document.querySelector('.captcha__buttons')?.offsetParent === null) {
@@ -1173,7 +1370,10 @@
                 } else {
                     _log('Captcha nadal otwarta.');
                 }
-            } catch (err) { _log('Błąd: ' + err.message); }
+
+            } catch (err) {
+                _log('Błąd: ' + err.message);
+            }
             await _delay(2000);
             _solving = false;
         }
@@ -1225,7 +1425,7 @@
         };
     })();
 
-    // ═══════════════════════════════════════════════════════ init ══
+    // ═══════════════════════════════════════════════════════ main ══
     MBot.ui.build();
 
     if (MBot.adapter.isNI) {
@@ -1251,9 +1451,11 @@
 
     MBot.adapter.onBattleClose(() => MBot.heal.autoHeal());
 
+    // ── Farm ──────────────────────────────────────────────────────────────
     document.getElementById('start-farm').addEventListener('click', () => MBot.farm.start());
     document.getElementById('stop-farm') .addEventListener('click', () => MBot.bot.stop());
 
+    // ── Route ─────────────────────────────────────────────────────────────
     document.getElementById('scan-mobs').addEventListener('click', () => {
         MBot.ui.renderRouteMobs(MBot.route.scanMobs());
     });
@@ -1297,6 +1499,7 @@
         MBot.ui.renderRouteSteps([]);
     });
 
+    // ── Heal ──────────────────────────────────────────────────────────────
     document.getElementById('refresh-inv').addEventListener('click', () => MBot.inventory.render());
     document.getElementById('save-heal-settings').addEventListener('click', () => {
         const threshold = parseInt(document.getElementById('heal-threshold').value) || 30;
@@ -1307,6 +1510,7 @@
         setTimeout(() => { notice.style.display = 'none'; }, 2000);
     });
 
+    // ── CAPTCHA ───────────────────────────────────────────────────────────
     const captchaToggle = document.getElementById('captcha-toggle');
     let captchaActive = !!MBot.storage.get('captchaEnabled');
 
@@ -1327,6 +1531,7 @@
     captchaToggle.addEventListener('click', () => _setCaptchaState(!captchaActive));
     _setCaptchaState(captchaActive);
 
+    // ── Auto-restart po przeładowaniu strony ──────────────────────────────
     const savedMode = MBot.storage.get('botMode');
     if (savedMode === 'farm') {
         setTimeout(() => MBot.farm.start(), 2000);
