@@ -70,7 +70,7 @@ MBot.route = (() => {
             // Brama nie istnieje na tej mapie → zła mapa → cofnij etap
             if (_gatewayFailCount >= MAX_GATEWAY_FAILS) {
                 _gatewayFailCount = 0;
-                const prev = Math.max(0, _currentStep - 1);
+                const prev = (_currentStep - 1 + _steps.length) % _steps.length;
                 console.warn(`[BOT Route] Nie ta mapa — cofam do etapu #${prev + 1}`);
                 _currentStep = prev;
                 MBot.storage.set('routeCurrentStep', _currentStep);
