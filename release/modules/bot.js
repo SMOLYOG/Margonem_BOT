@@ -4,6 +4,7 @@ MBot.bot = {
     healSlotEl: null,
     healItemId: MBot.storage.get("healItemId"),
     healItemName: MBot.storage.get("healItemName"),
+    autobattle: MBot.storage.get("autobattle") ?? true,
     healThreshold: MBot.storage.get("healThreshold") ?? 30,
     targetHeroes: [],
     targetElites: [],

@@ -10,6 +10,7 @@ MBot.storage = (() => {
         elitesInput: "",
         healItemId: null,
         healItemName: null,
+        autobattle: true,
         botMode: null,
         gatewayEnabled: false,
         gatewayDest: "",

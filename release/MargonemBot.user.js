@@ -42,6 +42,13 @@
 
     document.getElementById('heal-threshold').value = MBot.bot.healThreshold;
 
+    const autobattleEl = document.getElementById('autobattle-enabled');
+    autobattleEl.checked = MBot.bot.autobattle;
+    autobattleEl.addEventListener('change', () => {
+        MBot.bot.autobattle = autobattleEl.checked;
+        MBot.storage.set('autobattle', autobattleEl.checked);
+    });
+
     const gwEnabled = MBot.storage.get('gatewayEnabled');
     const gwDest    = MBot.storage.get('gatewayDest');
     if (gwEnabled) document.getElementById('gateway-enabled').checked = true;

@@ -40,6 +40,7 @@
             elitesInput: "",
             healItemId: null,
             healItemName: null,
+            autobattle: true,
             botMode: null,
             gatewayEnabled: false,
             gatewayDest: "",
@@ -178,6 +179,7 @@
         healSlotEl: null,
         healItemId: MBot.storage.get("healItemId"),
         healItemName: MBot.storage.get("healItemName"),
+        autobattle: MBot.storage.get("autobattle") ?? true,
         healThreshold: MBot.storage.get("healThreshold") ?? 30,
         targetHeroes: [],
         targetElites: [],
@@ -460,6 +462,10 @@
                     <div class="mbot-row">
                         <label>Nazwa</label>
                         <input type="text" id="mob-name" placeholder="dowolna...">
+                    </div>
+                    <div class="mbot-row" style="gap:8px;">
+                        <input type="checkbox" id="autobattle-enabled" style="margin:0;width:auto;flex:0;cursor:pointer;">
+                        <label for="autobattle-enabled" style="white-space:normal;line-height:1.3;cursor:pointer;color:#aaa;">Szybka walka (autobattle)</label>
                     </div>
                     <div class="mbot-btn-row">
                         <button class="mbot-btn-start" id="start-farm">▶ Start</button>
@@ -826,8 +832,10 @@
         }
 
         function handleBattleUISI() {
-            const autobattle = document.getElementById('autobattleButton');
-            if (autobattle && autobattle.style.display !== 'none') autobattle.click();
+            if (MBot.bot.autobattle) {
+                const autobattle = document.getElementById('autobattleButton');
+                if (autobattle && autobattle.style.display !== 'none') autobattle.click();
+            }
 
             const battleClose = document.getElementById('battleclose');
             if (battleClose && battleClose.style.display !== 'none') battleClose.click();
@@ -1440,6 +1448,13 @@
     if (mobName) document.getElementById('mob-name').value = mobName;
 
     document.getElementById('heal-threshold').value = MBot.bot.healThreshold;
+
+    const autobattleEl = document.getElementById('autobattle-enabled');
+    autobattleEl.checked = MBot.bot.autobattle;
+    autobattleEl.addEventListener('change', () => {
+        MBot.bot.autobattle = autobattleEl.checked;
+        MBot.storage.set('autobattle', autobattleEl.checked);
+    });
 
     const gwEnabled = MBot.storage.get('gatewayEnabled');
     const gwDest    = MBot.storage.get('gatewayDest');

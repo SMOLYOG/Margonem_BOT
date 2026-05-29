@@ -44,8 +44,10 @@ MBot.combat = (() => {
     }
 
     function handleBattleUISI() {
-        const autobattle = document.getElementById('autobattleButton');
-        if (autobattle && autobattle.style.display !== 'none') autobattle.click();
+        if (MBot.bot.autobattle) {
+            const autobattle = document.getElementById('autobattleButton');
+            if (autobattle && autobattle.style.display !== 'none') autobattle.click();
+        }
 
         const battleClose = document.getElementById('battleclose');
         if (battleClose && battleClose.style.display !== 'none') battleClose.click();
