@@ -1,6 +1,6 @@
 MBot.route = (() => {
-    const NO_MOBS_THRESHOLD = 10;
-    const MAX_GATEWAY_FAILS  = 20; // 20 * 400ms = 8s bez znalezienia bramy → cofnij etap
+    const NO_MOBS_THRESHOLD = 7;
+    const MAX_GATEWAY_FAILS = 8; // 8 * 400ms ≈ 3s bez bramy → cofnij etap
 
     let _steps = [];
     let _currentStep = 0;
@@ -45,11 +45,6 @@ MBot.route = (() => {
         });
     }
 
-    function _mapFingerprint() {
-        return [...document.querySelectorAll('.gw')]
-            .map(gw => _gatewayName(gw.getAttribute('tip') || '')).sort().join('|');
-    }
-
     // Szuka bramy: najpierw dokładne dopasowanie, potem częściowe
     function _findGateway(gatewayKey) {
         const gateways = [...document.querySelectorAll('.gw')];
@@ -69,25 +64,26 @@ MBot.route = (() => {
         const target = _findGateway(gatewayKey);
         if (!target) {
             _gatewayFailCount++;
-            if (_gatewayFailCount % 5 === 1) {
-                console.warn(`[BOT Route] Nie znaleziono bramy: "${gatewayKey}" (próba ${_gatewayFailCount})`);
+            if (_gatewayFailCount === 1) {
+                console.warn(`[BOT Route] Nie znaleziono bramy: "${gatewayKey}"`);
             }
+            // Brama nie istnieje na tej mapie → zła mapa → cofnij etap
             if (_gatewayFailCount >= MAX_GATEWAY_FAILS) {
                 _gatewayFailCount = 0;
-                // Prawdopodobnie jesteśmy na złej mapie — cofnij etap
                 const prev = (_currentStep - 1 + _steps.length) % _steps.length;
-                console.warn(`[BOT Route] Zła mapa — cofam do etapu #${prev + 1}`);
+                console.warn(`[BOT Route] Nie ta mapa — cofam do etapu #${prev + 1}`);
                 _currentStep = prev;
                 MBot.storage.set('routeCurrentStep', _currentStep);
             }
             return;
         }
 
+        // Brama znaleziona — klikamy i od razu przechodzimy na następny etap
         _gatewayFailCount = 0;
-        const nextStep  = (_currentStep + 1) % _steps.length;
-        const fpBefore  = _mapFingerprint();
+        const nextStep = (_currentStep + 1) % _steps.length;
+        _currentStep = nextStep;
+        MBot.storage.set('routeCurrentStep', _currentStep);
 
-        MBot.storage.set('routeCurrentStep', nextStep);
         if (nextStep === 0) {
             console.log('[BOT Route] ↩️ Pętla — wracam do etapu #1');
         } else {
@@ -96,19 +92,7 @@ MBot.route = (() => {
 
         MBot.bot.transitioning = true;
         try { _clickEl(target); } catch(e) {}
-
-        setTimeout(() => {
-            const fpAfter = _mapFingerprint();
-            if (fpAfter === fpBefore) {
-                console.warn('[BOT Route] Mapa nie zmieniła się — cofam etap, ponawiam');
-                MBot.storage.set('routeCurrentStep', _currentStep);
-            } else {
-                _currentStep = nextStep;
-                MBot.storage.set('routeCurrentStep', _currentStep);
-                MBot.ui.renderRouteSteps(MBot.route.getSteps());
-            }
-            MBot.bot.transitioning = false;
-        }, 4000);
+        setTimeout(() => { MBot.bot.transitioning = false; }, 3000);
     }
 
     function tick() {
